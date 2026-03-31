@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Financial Clarity</title>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#1a1916"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="FinClarity"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0e0c;
+      --surface: #1a1916;
+      --surface2: #242220;
+      --border: #2e2c29;
+      --gold: #c9a84c;
+      --gold-light: #e8c97a;
+      --gold-dim: rgba(201,168,76,0.12);
+      --text: #f0ece4;
+      --text-dim: #7a7670;
+      --text-mid: #b0aa9e;
+      --red: #c0392b;
+      --green: #27ae60;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      padding: 0 0 64px;
+    }
+
+    nav {
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      overflow-x: auto;
+    }
+
+    .nav-brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 15px;
+      color: var(--gold-light);
+      padding: 18px 24px 18px 0;
+      margin-right: 8px;
+      border-right: 1px solid var(--border);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .nav-tabs { display: flex; }
+
+    .nav-tab {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 20px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .nav-tab:hover { color: var(--text-mid); }
+    .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 0; }
+
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadeUp 0.3s ease both; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    header { margin-bottom: 40px; }
+
+    .eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.1;
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    h1 em { font-style: italic; color: var(--gold-light); }
+
+    .subtitle {
+      margin-top: 12px;
+      color: var(--text-mid);
+      font-size: 15px;
+      max-width: 480px;
+      line-height: 1.6;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: start; }
+
+    @media (max-width: 700px) { .grid, .grid-3 { grid-template-columns: 1fr; } }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+
+    .card-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .field { margin-bottom: 24px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field label { display: block; font-size: 13px; color: var(--text-mid); margin-bottom: 8px; }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .field-row:focus-within { border-color: var(--gold); }
+
+    .field-prefix, .field-suffix {
+      padding: 0 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--gold);
+      background: var(--gold-dim);
+      height: 48px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .field-row input[type="number"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 0 14px;
+      height: 48px;
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      color: var(--text);
+      width: 100%;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .slider-wrap { margin-top: 10px; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--gold);
+      border: 3px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--gold);
+      transition: transform 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    .results-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 24px; }
+
+    .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .results-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .results-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    @media (max-width: 640px) {
+      .results-grid, .results-grid.cols-2, .results-grid.cols-4 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 16px; }
+
+    .stat-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--text); word-break: break-word; }
+    .stat-value.highlight { color: var(--gold-light); }
+    .stat-value.danger    { color: #e07060; }
+    .stat-value.safe      { color: #6abf8a; }
+    .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    .pain-wrap { margin-bottom: 0; }
+
+    .pain-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+
+    .pain-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .pain-pct { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); }
+
+    .pain-bar-bg { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+
+    .pain-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--green), var(--gold), var(--red));
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .verdict { margin-top: 10px; font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+
+    .chart-wrap { position: relative; height: 220px; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+
+    .compare-table th {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .compare-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-mid); }
+    .compare-table tr:last-child td { border-bottom: none; }
+
+    .compare-table td:first-child {
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .val-min { color: #6abf8a; font-family: 'DM Mono', monospace; }
+    .val-pay { color: var(--gold-light); font-family: 'DM Mono', monospace; }
+    .val-bad { color: #e07060; font-family: 'DM Mono', monospace; }
+
+    .verdict-box { border-radius: 12px; padding: 20px 22px; }
+    .verdict-box.buy  { background: rgba(106,191,138,0.08); border: 1px solid rgba(106,191,138,0.25); }
+    .verdict-box.rent { background: rgba(201,168,76,0.08);  border: 1px solid rgba(201,168,76,0.25); }
+    .verdict-box.tied { background: var(--surface2); border: 1px solid var(--border); }
+
+    .verdict-box .vb-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+    .verdict-box.buy  .vb-label { color: #6abf8a; }
+    .verdict-box.rent .vb-label { color: var(--gold); }
+    .verdict-box.tied .vb-label { color: var(--text-dim); }
+    .verdict-box .vb-title { font-family: 'DM Serif Display', serif; font-size: 1.5rem; margin-bottom: 8px; }
+    .verdict-box .vb-body { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+
+    .milestone-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .milestone-row:last-child { border-bottom: none; }
+    .milestone-icon { font-size: 20px; flex-shrink: 0; width: 36px; text-align: center; }
+    .milestone-label { flex: 1; font-size: 13px; color: var(--text-mid); }
+    .milestone-value { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold); text-align: right; }
+    .milestone-done .milestone-label { color: #6abf8a; }
+    .milestone-done .milestone-value { color: #6abf8a; }
+
+    .footnote { margin-top: 40px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; text-align: center; }
+
+    .min-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--gold); margin-left: 8px; letter-spacing: 0.05em; }
+
+    .field-row select {
+      flex: 1; background: transparent; border: none; outline: none;
+      padding: 0 14px; height: 48px; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--text); width: 100%; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .field-row select option { background: var(--surface2); color: var(--text); }
+    .select-row { position: relative; }
+    .select-row::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--gold); font-size: 12px; pointer-events: none; }
+
+    .tax-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .tax-row:last-child { border-bottom: none; }
+    .tax-row-label { color: var(--text-mid); display: flex; align-items: center; gap: 8px; }
+    .tax-row-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .tax-row-right { text-align: right; }
+    .tax-row-amount { font-family: 'DM Mono', monospace; color: var(--text); font-size: 13px; }
+    .tax-row-rate { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+    .tax-row.total .tax-row-label { color: var(--text); font-size: 13px; }
+    .tax-row.total .tax-row-amount { color: #e07060; }
+    .tax-row.gross .tax-row-label { color: var(--text); }
+    .tax-row.gross .tax-row-amount { color: var(--gold-light); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Financial Clarity</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-screen="loan">Loan Calculator</div>
+    <div class="nav-tab" data-screen="cc">Credit Card</div>
+    <div class="nav-tab" data-screen="bvr">Buy vs Rent</div>
+    <div class="nav-tab" data-screen="sav">Savings Goal</div>
+    <div class="nav-tab" data-screen="tax">Tax Calculator</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ══ SCREEN 1: LOAN ══ -->
+  <div class="screen active" id="screen-loan">
+    <header>
+      <div class="eyebrow">True Cost Analysis</div>
+      <h1>What does your loan<br/><em>really</em> cost you?</h1>
+      <p class="subtitle">Enter your loan details. See the true price — not just the monthly payment.</p>
+    </header>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Loan Details</div>
+        <div class="field">
+          <label>Loan Amount</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="l-principal" value="20000" min="1000" max="1000000" step="500"/></div>
+          <div class="slider-wrap"><input type="range" id="l-principalSlider" min="1000" max="200000" step="500" value="20000"/><div class="slider-labels"><span>$1K</span><span>$200K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Annual Interest Rate</label>
+          <div class="field-row"><input type="number" id="l-rate" value="7.5" min="0.1" max="40" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="l-rateSlider" min="0.1" max="40" step="0.1" value="7.5"/><div class="slider-labels"><span>0.1%</span><span>40%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Loan Term (years)</label>
+          <div class="field-row"><input type="number" id="l-years" value="5" min="1" max="30" step="1" style="padding-left:14px"/><span class="field-suffix">yrs</span></div>
+          <div class="slider-wrap"><input type="range" id="l-yearsSlider" min="1" max="30" step="1" value="5"/><div class="slider-labels"><span>1 yr</span><span>30 yrs</span></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Principal vs Interest Over Time</div>
+        <div class="chart-wrap"><canvas id="loanChart"></canvas></div>
+      </div>
+    </div>
+    <div class="results-card">
+      <div class="card-title">True Cost Breakdown</div>
+      <div class="results-grid">
+        <div class="stat"><div class="stat-label">Monthly Payment</div><div class="stat-value highlight" id="l-monthly">—</div></div>
+        <div class="stat"><div class="stat-label">Total Interest Paid</div><div class="stat-value danger" id="l-totalInterest">—</div><div class="stat-sub" id="l-interestPct"></div></div>
+        <div class="stat"><div class="stat-label">Total Amount Paid</div><div class="stat-value" id="l-totalPaid">—</div></div>
+      </div>
+      <hr class="divider"/>
+      <div class="pain-wrap">
+        <div class="pain-label-row"><span class="pain-title">Interest Pain Meter</span><span class="pain-pct" id="l-painPct">0%</span></div>
+        <div class="pain-bar-bg"><div class="pain-bar-fill" id="l-painBar" style="width:0%"></div></div>
+        <p class="verdict" id="l-verdict"></p>
+      </div>
+    </div>
+    <p class="footnote">Estimates based on fixed-rate amortization. Actual terms may vary.</p>
+  </div>
+
+  <!-- ══ SCREEN 2: CREDIT CARD ══ -->
+  <div class="screen" id="screen-cc">
+    <header>
+      <div class="eyebrow">Credit Card Reality Check</div>
+      <h1>How long until you're<br/><em>actually</em> free?</h1>
+      <p class="subtitle">Most people only pay the minimum. See what that really costs — and how much you save by paying more.</p>
+    </header>
+    <div class="">
+      <div class="card" style="max-width:500px">
+        <div class="card-title">Card Details</div>
+        <div class="field">
+          <label>Current Balance</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="cc-balance" value="5000" min="100" max="100000" step="100"/></div>
+          <div class="slider-wrap"><input type="range" id="cc-balanceSlider" min="100" max="50000" step="100" value="5000"/><div class="slider-labels"><span>$100</span><span>$50K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Annual Interest Rate (APR)</label>
+          <div class="field-row"><input type="number" id="cc-apr" value="22" min="1" max="60" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="cc-aprSlider" min="1" max="60" step="0.1" value="22"/><div class="slider-labels"><span>1%</span><span>60%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Your Monthly Payment <span class="min-hint" id="cc-minHint"></span></label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="cc-payment" value="200" min="10" max="10000" step="10"/></div>
+          <div class="slider-wrap"><input type="range" id="cc-paymentSlider" min="10" max="2000" step="10" value="200"/><div class="slider-labels"><span id="cc-sliderMinLabel">$10</span><span>$2K</span></div></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="results-card">
+      <div class="card-title">Payoff Analysis</div>
+      <div class="results-grid cols-4">
+        <div class="stat"><div class="stat-label">Min. Payment Today</div><div class="stat-value" id="cc-minPayment">—</div><div class="stat-sub">2% of balance</div></div>
+        <div class="stat"><div class="stat-label">Months to Pay Off</div><div class="stat-value highlight" id="cc-months">—</div><div class="stat-sub" id="cc-monthsSub"></div></div>
+        <div class="stat"><div class="stat-label">Total Interest</div><div class="stat-value danger" id="cc-interest">—</div></div>
+        <div class="stat"><div class="stat-label">Total Paid</div><div class="stat-value" id="cc-total">—</div></div>
+      </div>
+      <hr class="divider"/>
+      <div class="card-title" style="margin-bottom:12px">Minimum Payment vs Your Payment</div>
+      <table class="compare-table">
+        <thead><tr><th></th><th>Minimum Only</th><th>Your Payment</th><th>You Save</th></tr></thead>
+        <tbody>
+          <tr><td>Months to payoff</td><td class="val-bad" id="cc-cmp-minMonths">—</td><td class="val-pay" id="cc-cmp-payMonths">—</td><td class="val-min" id="cc-cmp-saveMonths">—</td></tr>
+          <tr><td>Total interest paid</td><td class="val-bad" id="cc-cmp-minInterest">—</td><td class="val-pay" id="cc-cmp-payInterest">—</td><td class="val-min" id="cc-cmp-saveInterest">—</td></tr>
+          <tr><td>Total amount paid</td><td class="val-bad" id="cc-cmp-minTotal">—</td><td class="val-pay" id="cc-cmp-payTotal">—</td><td class="val-min" id="cc-cmp-saveTotal">—</td></tr>
+        </tbody>
+      </table>
+      <hr class="divider"/>
+      <div class="pain-wrap">
+        <div class="pain-label-row"><span class="pain-title">Debt Burden Meter</span><span class="pain-pct" id="cc-painPct"></span></div>
+        <div class="pain-bar-bg"><div class="pain-bar-fill" id="cc-painBar" style="width:0%"></div></div>
+        <p class="verdict" id="cc-verdict"></p>
+      </div>
+    </div>
+    <p class="footnote">Min payment = 2% of balance or $25, whichever is higher. Fixed payment assumed for your payment scenario.</p>
+  </div>
+
+  <!-- ══ SCREEN 3: BUY VS RENT ══ -->
+  <div class="screen" id="screen-bvr">
+    <header>
+      <div class="eyebrow">The Big Decision</div>
+      <h1>Should you buy<br/>or <em>keep renting?</em></h1>
+      <p class="subtitle">The answer depends on how long you stay, what the market does, and costs most people forget to include.</p>
+    </header>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">If You Buy</div>
+        <div class="field">
+          <label>Home Price</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="bvr-price" value="500000" min="50000" max="5000000" step="5000"/></div>
+          <div class="slider-wrap"><input type="range" id="bvr-priceSlider" min="50000" max="2000000" step="5000" value="500000"/><div class="slider-labels"><span>$50K</span><span>$2M</span></div></div>
+        </div>
+        <div class="field">
+          <label>Down Payment</label>
+          <div class="field-row"><input type="number" id="bvr-down" value="20" min="3" max="100" step="1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-downSlider" min="3" max="60" step="1" value="20"/><div class="slider-labels"><span>3%</span><span>60%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Mortgage Rate</label>
+          <div class="field-row"><input type="number" id="bvr-rate" value="7" min="1" max="15" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-rateSlider" min="1" max="15" step="0.1" value="7"/><div class="slider-labels"><span>1%</span><span>15%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Annual Home Appreciation</label>
+          <div class="field-row"><input type="number" id="bvr-appr" value="3" min="0" max="15" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-apprSlider" min="0" max="15" step="0.5" value="3"/><div class="slider-labels"><span>0%</span><span>15%</span></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">If You Rent</div>
+        <div class="field">
+          <label>Monthly Rent</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="bvr-rent" value="2500" min="300" max="20000" step="100"/></div>
+          <div class="slider-wrap"><input type="range" id="bvr-rentSlider" min="300" max="10000" step="100" value="2500"/><div class="slider-labels"><span>$300</span><span>$10K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Annual Rent Increase</label>
+          <div class="field-row"><input type="number" id="bvr-rentInc" value="3" min="0" max="15" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-rentIncSlider" min="0" max="15" step="0.5" value="3"/><div class="slider-labels"><span>0%</span><span>15%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Investment Return on Down Payment</label>
+          <div class="field-row"><input type="number" id="bvr-invest" value="7" min="0" max="20" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-investSlider" min="0" max="20" step="0.5" value="7"/><div class="slider-labels"><span>0%</span><span>20%</span></div></div>
+        </div>
+        <div class="field">
+          <label>Time Horizon</label>
+          <div class="field-row"><input type="number" id="bvr-years" value="10" min="1" max="30" step="1" style="padding-left:14px"/><span class="field-suffix">yrs</span></div>
+          <div class="slider-wrap"><input type="range" id="bvr-yearsSlider" min="1" max="30" step="1" value="10"/><div class="slider-labels"><span>1 yr</span><span>30 yrs</span></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Net Cost Over Time</div>
+        <div class="chart-wrap"><canvas id="bvrChart"></canvas></div>
+      </div>
+    </div>
+    <div class="results-card">
+      <div class="card-title">After <span id="bvr-yearsLabel">10</span> Years</div>
+      <div class="results-grid cols-4" style="margin-bottom:24px">
+        <div class="stat"><div class="stat-label">Buy: Total Cost</div><div class="stat-value danger" id="bvr-buyCost">—</div><div class="stat-sub">incl. interest, tax, maintenance</div></div>
+        <div class="stat"><div class="stat-label">Buy: Home Equity</div><div class="stat-value safe" id="bvr-equity">—</div></div>
+        <div class="stat"><div class="stat-label">Rent: Total Cost</div><div class="stat-value danger" id="bvr-rentCost">—</div></div>
+        <div class="stat"><div class="stat-label">Rent: Investment Value</div><div class="stat-value safe" id="bvr-investVal">—</div></div>
+      </div>
+      <hr class="divider"/>
+      <div id="bvr-verdictBox" class="verdict-box tied">
+        <div class="vb-label" id="bvr-vbLabel">Calculating…</div>
+        <div class="vb-title" id="bvr-vbTitle">—</div>
+        <div class="vb-body" id="bvr-vbBody"></div>
+      </div>
+    </div>
+    <p class="footnote">Buying costs include: mortgage interest, property tax (1.2%), maintenance (1%), insurance (0.5%), closing costs (3%). Excludes local tax deductions.</p>
+  </div>
+
+  <!-- ══ SCREEN 4: SAVINGS GOAL ══ -->
+  <div class="screen" id="screen-sav">
+    <header>
+      <div class="eyebrow">Savings Planner</div>
+      <h1>When will you<br/><em>reach your goal?</em></h1>
+      <p class="subtitle">Set a target, enter what you can save monthly, and see exactly how long it takes — with compound interest working for you.</p>
+    </header>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Your Plan</div>
+        <div class="field">
+          <label>Savings Goal</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-goal" value="50000" min="1000" max="10000000" step="1000"/></div>
+          <div class="slider-wrap"><input type="range" id="sav-goalSlider" min="1000" max="500000" step="1000" value="50000"/><div class="slider-labels"><span>$1K</span><span>$500K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Starting Balance</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-start" value="5000" min="0" max="1000000" step="500"/></div>
+          <div class="slider-wrap"><input type="range" id="sav-startSlider" min="0" max="100000" step="500" value="5000"/><div class="slider-labels"><span>$0</span><span>$100K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Monthly Contribution</label>
+          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-monthly" value="500" min="10" max="50000" step="50"/></div>
+          <div class="slider-wrap"><input type="range" id="sav-monthlySlider" min="10" max="5000" step="50" value="500"/><div class="slider-labels"><span>$10</span><span>$5K</span></div></div>
+        </div>
+        <div class="field">
+          <label>Annual Return / Interest Rate</label>
+          <div class="field-row"><input type="number" id="sav-rate" value="5" min="0" max="20" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
+          <div class="slider-wrap"><input type="range" id="sav-rateSlider" min="0" max="20" step="0.5" value="5"/><div class="slider-labels"><span>0%</span><span>20%</span></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Balance Growth</div>
+        <div class="chart-wrap"><canvas id="savChart"></canvas></div>
+      </div>
+    </div>
+    <div class="results-card">
+      <div class="card-title">Your Results</div>
+      <div class="results-grid cols-4" style="margin-bottom:24px">
+        <div class="stat"><div class="stat-label">Time to Goal</div><div class="stat-value highlight" id="sav-time">—</div></div>
+        <div class="stat"><div class="stat-label">Total Contributed</div><div class="stat-value" id="sav-contributed">—</div></div>
+        <div class="stat"><div class="stat-label">Interest Earned</div><div class="stat-value safe" id="sav-interest">—</div></div>
+        <div class="stat"><div class="stat-label">Interest is</div><div class="stat-value highlight" id="sav-interestPct">—</div><div class="stat-sub">of your total goal</div></div>
+      </div>
+      <hr class="divider"/>
+      <div class="card-title" style="margin-bottom:16px">Milestones</div>
+      <div id="sav-milestones"></div>
+    </div>
+    <p class="footnote">Assumes monthly compounding. Does not account for taxes on returns.</p>
+  </div>
+
+  <!-- ══ SCREEN 5: TAX CALCULATOR ══ -->
+  <div class="screen" id="screen-tax">
+    <header>
+      <div class="eyebrow">Take-Home Pay</div>
+      <h1>How much do you <em>actually</em><br/>keep?</h1>
+      <p class="subtitle">Enter your gross salary and see your real after-tax income — for Israel or the United States.</p>
+    </header>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Salary Details</div>
+        <div class="field">
+          <label>Country</label>
+          <div class="field-row select-row">
+            <select id="tax-country">
+              <option value="usa">United States</option>
+              <option value="isr">Israel</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label id="tax-status-label">Filing Status</label>
+          <div class="field-row select-row">
+            <select id="tax-status">
+              <option value="single">Single</option>
+              <option value="married">Married</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Gross Annual Salary</label>
+          <div class="field-row"><span class="field-prefix" id="tax-symbol">$</span><input type="number" id="tax-salary" value="80000" min="0" step="1000"/></div>
+          <div class="slider-wrap"><input type="range" id="tax-salarySlider" min="0" max="500000" step="1000" value="80000"/><div class="slider-labels"><span id="tax-sl-min">$0</span><span id="tax-sl-max">$500K</span></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tax Breakdown</div>
+        <div id="tax-breakdown"></div>
+      </div>
+    </div>
+    <div class="results-card">
+      <div class="card-title">Take-Home Summary</div>
+      <div class="results-grid cols-4">
+        <div class="stat"><div class="stat-label">Net Annual</div><div class="stat-value highlight" id="tax-net-annual">—</div></div>
+        <div class="stat"><div class="stat-label">Net Monthly</div><div class="stat-value highlight" id="tax-net-monthly">—</div></div>
+        <div class="stat"><div class="stat-label">Effective Tax Rate</div><div class="stat-value danger" id="tax-eff-rate">—</div></div>
+        <div class="stat"><div class="stat-label">Total Deducted</div><div class="stat-value" id="tax-total-ded">—</div></div>
+      </div>
+      <hr class="divider"/>
+      <div class="pain-wrap">
+        <div class="pain-label-row"><span class="pain-title">Tax Burden</span><span class="pain-pct" id="tax-pain-pct">0%</span></div>
+        <div class="pain-bar-bg"><div class="pain-bar-fill" id="tax-pain-bar" style="width:0%"></div></div>
+        <p class="verdict" id="tax-verdict"></p>
+      </div>
+    </div>
+    <p class="footnote">Estimates only. USA: 2024 federal brackets, standard deduction, FICA — excludes state income tax. Israel: 2024 tax brackets, standard credit points, National Insurance &amp; Health tax — excludes employer contributions.</p>
+  </div>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString();
+
+  // ── NAV ──────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      tab.classList.add('active');
+      $('screen-' + tab.dataset.screen).classList.add('active');
+    });
+  });
+
+  // ── SLIDER SYNC ───────────────────────────────────────────────────────────
+  function sync(inp, sl, fn) {
+    $(inp).addEventListener('input', () => { $(sl).value = $(inp).value; fn(); });
+    $(sl).addEventListener('input',  () => { $(inp).value = $(sl).value; fn(); });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 1. LOAN
+  // ══════════════════════════════════════════════════════════════════════════
+  const loanChart = new Chart($('loanChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels: [], datasets: [
+      { label: 'Principal Paid', data: [], backgroundColor: 'rgba(201,168,76,0.6)', borderColor: 'rgba(201,168,76,1)', borderWidth: 1, borderRadius: 3 },
+      { label: 'Interest Paid',  data: [], backgroundColor: 'rgba(192,57,43,0.5)',  borderColor: 'rgba(192,57,43,0.8)', borderWidth: 1, borderRadius: 3 }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: {
+        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 } }, grid: { color: '#2e2c29' } },
+        y: { stacked: true, ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      }
+    }
+  });
+
+  function calcLoan() {
+    const P = parseFloat($('l-principal').value)||0;
+    const r = (parseFloat($('l-rate').value)||0)/100/12;
+    const years = parseInt($('l-years').value)||1;
+    const n = years*12;
+    const monthly = r===0 ? P/n : P*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
+    const totalPaid = monthly*n, totalInterest = totalPaid-P;
+    const iPct = (totalInterest/P)*100;
+    $('l-monthly').textContent       = fmt(monthly);
+    $('l-totalInterest').textContent  = fmt(totalInterest);
+    $('l-totalPaid').textContent      = fmt(totalPaid);
+    $('l-interestPct').textContent    = `+${iPct.toFixed(1)}% of principal`;
+    $('l-painBar').style.width        = Math.min(iPct,100)+'%';
+    $('l-painPct').textContent        = iPct.toFixed(1)+'%';
+    const v=[[10,"Very low interest cost. This is an efficient loan."],[25,"Reasonable cost. You're paying a moderate premium for borrowing."],[60,"Significant interest. Consider paying extra monthly to reduce total cost."],[100,"High cost of borrowing. Every extra payment saves you disproportionately."],[Infinity,"⚠️ You're paying more in interest than the loan itself. Refinancing is worth exploring."]];
+    $('l-verdict').textContent = v.find(([t])=>iPct<t)[1];
+    let bal=P, labels=[], pData=[], iData=[];
+    for(let y=1;y<=years;y++){
+      let yP=0,yI=0;
+      for(let m=0;m<12;m++){const ip=bal*r,pp=monthly-ip;yI+=ip;yP+=pp;bal=Math.max(0,bal-pp);}
+      labels.push('Yr '+y); pData.push(yP.toFixed(2)); iData.push(yI.toFixed(2));
+    }
+    loanChart.data.labels=labels; loanChart.data.datasets[0].data=pData; loanChart.data.datasets[1].data=iData; loanChart.update();
+  }
+
+  sync('l-principal','l-principalSlider',calcLoan);
+  sync('l-rate','l-rateSlider',calcLoan);
+  sync('l-years','l-yearsSlider',calcLoan);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 2. CREDIT CARD — fully rebuilt with correct chart logic
+  // ══════════════════════════════════════════════════════════════════════════
+
+
+  // Simulate minimum payment (recalculates 2% each month — realistic)
+  function simulateMin(balance, apr) {
+    const mr = apr/100/12;
+    let bal = balance, totalInterest = 0, months = 0;
+    const balances = [bal];
+    while(bal > 0.01 && months < 600) {
+      const interest = bal * mr;
+      const payment = Math.max(25, bal * 0.02);
+      if(payment <= interest) break; // can't pay off
+      totalInterest += interest;
+      bal = Math.max(0, bal - (payment - interest));
+      months++;
+      balances.push(bal);
+    }
+    return { months, totalInterest, totalPaid: balance + totalInterest, balances };
+  }
+
+  // Simulate fixed payment
+  function simulateFixed(balance, apr, payment) {
+    const mr = apr/100/12;
+    let bal = balance, totalInterest = 0, months = 0;
+    const balances = [bal];
+    const monthlyInterest = bal * mr;
+    if(payment <= monthlyInterest) return null; // payment can't cover interest
+    while(bal > 0.01 && months < 600) {
+      const interest = bal * mr;
+      if(payment <= interest) break;
+      totalInterest += interest;
+      bal = Math.max(0, bal - (payment - interest));
+      months++;
+      balances.push(bal);
+    }
+    return { months, totalInterest, totalPaid: balance + totalInterest, balances };
+  }
+
+  function calcCC() {
+    const balance = parseFloat($('cc-balance').value)||0;
+    const apr     = parseFloat($('cc-apr').value)||0;
+
+    // Calculate minimum payment and update UI
+    const minPayment = Math.max(25, Math.round(balance * 0.02));
+    $('cc-minPayment').textContent = fmt(minPayment);
+    $('cc-minHint').textContent    = 'min: $' + minPayment;
+    $('cc-sliderMinLabel').textContent = '$' + minPayment + ' min';
+
+    // Clamp slider & input to minimum
+    $('cc-paymentSlider').min = minPayment;
+    $('cc-payment').min = minPayment;
+    let payment = parseFloat($('cc-payment').value)||0;
+    if(payment < minPayment) {
+      payment = minPayment;
+      $('cc-payment').value = minPayment;
+      $('cc-paymentSlider').value = minPayment;
+    }
+
+    const resMin = simulateMin(balance, apr);
+    const resPay = simulateFixed(balance, apr, payment);
+
+    // ── Case: payment too low to cover interest (debt spiral) ──
+    if(!resPay) {
+      $('cc-months').textContent    = '∞';
+      $('cc-interest').textContent  = '∞';
+      $('cc-total').textContent     = '∞';
+      $('cc-monthsSub').textContent = 'debt is growing';
+      const monthlyInt = Math.round(balance*(apr/100/12));
+      $('cc-verdict').textContent   = `⚠️ Monthly interest is $${monthlyInt.toLocaleString()} but your payment is only $${payment.toLocaleString()}. Your balance grows every month!`;
+      $('cc-painBar').style.width   = '100%';
+      $('cc-painPct').textContent   = '∞ — growing';
+      // Show 5-year spiral going UP
+      const mr = apr/100/12;
+      let bal = balance;
+      const spiralLabels = ['Now'], spiralData = [bal];
+      for(let m=1; m<=60; m++) {
+        bal = bal*(1+mr) - payment;
+        if(m % 6 === 0) { spiralLabels.push('Mo '+m); spiralData.push(Math.round(bal)); }
+      }
+      return;
+    }
+
+    // ── Normal case ──
+    const yrs = (resPay.months/12).toFixed(1);
+    $('cc-months').textContent    = resPay.months;
+    $('cc-monthsSub').textContent = yrs + ' years';
+    $('cc-interest').textContent  = fmt(resPay.totalInterest);
+    $('cc-total').textContent     = fmt(resPay.totalPaid);
+
+    // Comparison table
+    $('cc-cmp-minMonths').textContent    = `${resMin.months} mo (${(resMin.months/12).toFixed(1)} yrs)`;
+    $('cc-cmp-payMonths').textContent    = `${resPay.months} mo (${yrs} yrs)`;
+    $('cc-cmp-saveMonths').textContent   = `${resMin.months - resPay.months} months faster`;
+    $('cc-cmp-minInterest').textContent  = fmt(resMin.totalInterest);
+    $('cc-cmp-payInterest').textContent  = fmt(resPay.totalInterest);
+    $('cc-cmp-saveInterest').textContent = fmt(resMin.totalInterest - resPay.totalInterest);
+    $('cc-cmp-minTotal').textContent     = fmt(resMin.totalPaid);
+    $('cc-cmp-payTotal').textContent     = fmt(resPay.totalPaid);
+    $('cc-cmp-saveTotal').textContent    = fmt(resMin.totalPaid - resPay.totalPaid);
+
+    // Pain meter
+    const iPct = (resPay.totalInterest/balance)*100;
+    $('cc-painBar').style.width = Math.min(iPct,100)+'%';
+    $('cc-painPct').textContent = iPct.toFixed(1)+'% interest overhead';
+    const v=[[15,"Excellent. You're crushing this debt efficiently."],[35,"Manageable. Even $50 extra/month makes a big difference."],[75,"Costly. The bank is making real money on you here."],[150,"Painful. You'll pay back far more than you borrowed. Attack this aggressively."],[Infinity,"⚠️ This is a serious financial burden. Every extra dollar you pay saves you disproportionately."]];
+    $('cc-verdict').textContent = v.find(([t])=>iPct<t)[1];
+
+    // ── Chart — KEY FIX ──
+    // X-axis uses the LONGER timeline (minimum payment takes longest)
+    // Gold line ends at payoff with nulls after — so it doesn't drag along the bottom
+    // Red line runs its full slow journey
+    const maxLen = Math.max(resMin.balances.length, resPay.balances.length);
+    const labels = Array.from({length: maxLen}, (_, i) => i === 0 ? 'Now' : `Mo ${i}`);
+
+    // Pad gold line with nulls (not zeros!) after it hits $0
+    const goldData = [...resPay.balances];
+    while(goldData.length < maxLen) goldData.push(null);
+  }
+
+  // Balance syncs also trigger min payment recalc
+  $('cc-balance').addEventListener('input', () => { $('cc-balanceSlider').value = $('cc-balance').value; calcCC(); });
+  $('cc-balanceSlider').addEventListener('input', () => { $('cc-balance').value = $('cc-balanceSlider').value; calcCC(); });
+  sync('cc-apr','cc-aprSlider',calcCC);
+  sync('cc-payment','cc-paymentSlider',calcCC);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3. BUY VS RENT
+  // ══════════════════════════════════════════════════════════════════════════
+  const bvrChart = new Chart($('bvrChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Buy (net cost)',  data: [], borderColor: '#e07060', backgroundColor: 'rgba(224,112,96,0.07)', tension: 0.3, borderWidth: 2, pointRadius: 0 },
+      { label: 'Rent (net cost)', data: [], borderColor: '#c9a84c', backgroundColor: 'rgba(201,168,76,0.07)', tension: 0.3, borderWidth: 2, pointRadius: 0 }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: {
+        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#2e2c29' } },
+        y: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      }
+    }
+  });
+
+  function calcBvR() {
+    const price      = parseFloat($('bvr-price').value)||0;
+    const downPct    = (parseFloat($('bvr-down').value)||0)/100;
+    const mortRate   = (parseFloat($('bvr-rate').value)||0)/100/12;
+    const apprRate   = (parseFloat($('bvr-appr').value)||0)/100;
+    const rent0      = parseFloat($('bvr-rent').value)||0;
+    const rentInc    = (parseFloat($('bvr-rentInc').value)||0)/100;
+    const investRate = (parseFloat($('bvr-invest').value)||0)/100/12;
+    const years      = parseInt($('bvr-years').value)||1;
+    $('bvr-yearsLabel').textContent = years;
+    const downAmt = price*downPct, loanAmt = price-downAmt;
+    const n = 30*12;
+    const monthly = mortRate===0 ? loanAmt/n : loanAmt*(mortRate*Math.pow(1+mortRate,n))/(Math.pow(1+mortRate,n)-1);
+    const buyNetArr=[], rentNetArr=[];
+    let buyTotalCost=0, rentTotalCost=0, bal=loanAmt, homeVal=price, rent=rent0, investVal=downAmt;
+    buyTotalCost += price*0.03;
+    for(let y=1;y<=years;y++){
+      let yearInterest=0;
+      for(let m=0;m<12;m++){const ip=bal*mortRate,pp=monthly-ip;yearInterest+=ip;bal=Math.max(0,bal-pp);}
+      buyTotalCost += yearInterest + homeVal*0.012 + homeVal*0.01 + homeVal*0.005;
+      homeVal *= (1+apprRate);
+      rentTotalCost += rent*12;
+      rent *= (1+rentInc);
+      for(let m=0;m<12;m++) investVal *= (1+investRate);
+      buyNetArr.push(buyTotalCost);
+      rentNetArr.push(rentTotalCost);
+    }
+    const equity = homeVal - bal;
+    $('bvr-buyCost').textContent   = fmt(buyTotalCost);
+    $('bvr-equity').textContent    = fmt(equity);
+    $('bvr-rentCost').textContent  = fmt(rentTotalCost);
+    $('bvr-investVal').textContent = fmt(investVal);
+    const buyNet = buyTotalCost-equity, rentNet = rentTotalCost-(investVal-downAmt);
+    const box = $('bvr-verdictBox');
+    box.className = 'verdict-box';
+    const diff = Math.abs(buyNet-rentNet);
+    if(buyNet<rentNet){
+      box.classList.add('buy');
+      $('bvr-vbLabel').textContent = '🏠 Buying wins';
+      $('bvr-vbTitle').textContent = `You're ${fmt(diff)} better off buying`;
+      $('bvr-vbBody').textContent  = `Over ${years} years, buying builds ${fmt(equity)} in equity. The higher upfront and ongoing costs are outweighed by appreciation and principal paydown.`;
+    } else if(rentNet<buyNet){
+      box.classList.add('rent');
+      $('bvr-vbLabel').textContent = '🏢 Renting wins';
+      $('bvr-vbTitle').textContent = `You're ${fmt(diff)} better off renting`;
+      $('bvr-vbBody').textContent  = `Over ${years} years, renting keeps costs lower and your invested down payment grows to ${fmt(investVal)}. Try increasing your time horizon to see when buying becomes better.`;
+    } else {
+      box.classList.add('tied');
+      $('bvr-vbLabel').textContent = '⚖️ It\'s a tie';
+      $('bvr-vbTitle').textContent = 'Roughly break-even';
+      $('bvr-vbBody').textContent  = 'Both options have a similar net outcome. Your lifestyle preference and flexibility needs should drive the decision.';
+    }
+    const labels = Array.from({length:years},(_,i)=>'Yr '+(i+1));
+    bvrChart.data.labels=labels; bvrChart.data.datasets[0].data=buyNetArr; bvrChart.data.datasets[1].data=rentNetArr; bvrChart.update();
+  }
+
+  sync('bvr-price','bvr-priceSlider',calcBvR);
+  sync('bvr-down','bvr-downSlider',calcBvR);
+  sync('bvr-rate','bvr-rateSlider',calcBvR);
+  sync('bvr-appr','bvr-apprSlider',calcBvR);
+  sync('bvr-rent','bvr-rentSlider',calcBvR);
+  sync('bvr-rentInc','bvr-rentIncSlider',calcBvR);
+  sync('bvr-invest','bvr-investSlider',calcBvR);
+  sync('bvr-years','bvr-yearsSlider',calcBvR);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 4. SAVINGS GOAL
+  // ══════════════════════════════════════════════════════════════════════════
+  const savChart = new Chart($('savChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Balance',       data: [], borderColor: '#c9a84c', backgroundColor: 'rgba(201,168,76,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 0, fill: true },
+      { label: 'Contributions', data: [], borderColor: '#7a7670', backgroundColor: 'transparent',           tension: 0.3, borderWidth: 1, pointRadius: 0, borderDash: [4,3] }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: {
+        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#2e2c29' } },
+        y: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      }
+    }
+  });
+
+  function calcSav() {
+    const goal    = parseFloat($('sav-goal').value)||0;
+    const start   = parseFloat($('sav-start').value)||0;
+    const monthly = parseFloat($('sav-monthly').value)||0;
+    const mr      = (parseFloat($('sav-rate').value)||0)/100/12;
+    let bal=start, months=0, totalContrib=start;
+    const balArr=[bal], contribArr=[start], labels=['Now'];
+    const MAX=600;
+    while(bal<goal && months<MAX){
+      bal = bal*(1+mr)+monthly;
+      months++;
+      totalContrib += monthly;
+      if(months%12===0 || bal>=goal){
+        labels.push('Yr '+Math.ceil(months/12));
+        balArr.push(bal);
+        contribArr.push(totalContrib);
+      }
+    }
+    const interestEarned = bal-totalContrib;
+    const iPct = (interestEarned/goal)*100;
+    if(months>=MAX){ $('sav-time').textContent='50+ yrs'; }
+    else { const yrs=Math.floor(months/12),mos=months%12; $('sav-time').textContent=yrs>0?`${yrs}y ${mos}m`:`${mos} mo`; }
+    $('sav-contributed').textContent = fmt(totalContrib);
+    $('sav-interest').textContent    = fmt(interestEarned);
+    $('sav-interestPct').textContent = iPct.toFixed(1)+'%';
+    savChart.data.labels=labels; savChart.data.datasets[0].data=balArr; savChart.data.datasets[1].data=contribArr; savChart.update();
+    const pcts=[25,50,75,100], icons=['🌱','🌿','🌳','🏆'], el=$('sav-milestones');
+    el.innerHTML='';
+    pcts.forEach((pct,i)=>{
+      const target=goal*(pct/100);
+      let mBal=start,mMonths=0,mContrib=start;
+      while(mBal<target&&mMonths<MAX){mBal=mBal*(1+mr)+monthly;mMonths++;mContrib+=monthly;}
+      const done=start>=target;
+      const yrs=Math.floor(mMonths/12),mos=mMonths%12;
+      const timeStr=mMonths===0?'Already there!':(yrs>0?`${yrs}y ${mos}m`:`${mos} mo`);
+      const row=document.createElement('div');
+      row.className='milestone-row'+(done?' milestone-done':'');
+      row.innerHTML=`<div class="milestone-icon">${icons[i]}</div><div class="milestone-label">${pct}% of goal — ${fmt(target)}</div><div class="milestone-value">${done?'✓ Done':timeStr}</div>`;
+      el.appendChild(row);
+    });
+  }
+
+  sync('sav-goal','sav-goalSlider',calcSav);
+  sync('sav-start','sav-startSlider',calcSav);
+  sync('sav-monthly','sav-monthlySlider',calcSav);
+  sync('sav-rate','sav-rateSlider',calcSav);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TAX CALCULATOR
+  // ══════════════════════════════════════════════════════════════════════════
+  function taxUSA(gross, status) {
+    const stdDed = status === 'married' ? 29200 : 14600;
+    const taxable = Math.max(0, gross - stdDed);
+
+    const bracketsS = [[11600,0.10],[35550,0.12],[53375,0.22],[91425,0.24],[51775,0.32],[365625,0.35],[Infinity,0.37]];
+    const bracketsM = [[23200,0.10],[71100,0.12],[106750,0.22],[182750,0.24],[103550,0.32],[243750,0.35],[Infinity,0.37]];
+    const brackets  = status === 'married' ? bracketsM : bracketsS;
+
+    let incomeTax = 0, rem = taxable;
+    for (const [size, rate] of brackets) {
+      const chunk = Math.min(rem, size);
+      incomeTax += chunk * rate;
+      rem -= chunk;
+      if (rem <= 0) break;
+    }
+
+    const ssTax = Math.min(gross, 168600) * 0.062;
+    const medTax = gross * 0.0145 + Math.max(0, gross - 200000) * 0.009;
+    return { incomeTax, ss: ssTax, health: medTax, ni: 0,
+             total: incomeTax + ssTax + medTax,
+             labels: ['Federal Income Tax', 'Social Security (6.2%)', 'Medicare (1.45%)'],
+             amounts: [incomeTax, ssTax, medTax] };
+  }
+
+  function taxISR(gross, status) {
+    const brackets = [[81480,0.10],[35280,0.14],[70680,0.20],[73080,0.31],[279480,0.35],[Infinity,0.47]];
+    let incomeTax = 0, rem = gross;
+    for (const [size, rate] of brackets) {
+      const chunk = Math.min(rem, size);
+      incomeTax += chunk * rate;
+      rem -= chunk;
+      if (rem <= 0) break;
+    }
+    const creditPts = status === 'married' ? 2.75 : 2.25;
+    incomeTax = Math.max(0, incomeTax - creditPts * 2904);
+
+    const niFloor = 75972;
+    const niTax     = gross <= niFloor ? gross * 0.004 : niFloor * 0.004 + (gross - niFloor) * 0.07;
+    const healthTax = gross <= niFloor ? gross * 0.031 : niFloor * 0.031 + (gross - niFloor) * 0.05;
+    return { incomeTax, ss: 0, health: healthTax, ni: niTax,
+             total: incomeTax + niTax + healthTax,
+             labels: ['Income Tax (Mas Hachnasa)', 'National Insurance (Bituach Leumi)', 'Health Tax (Mas Briut)'],
+             amounts: [incomeTax, niTax, healthTax] };
+  }
+
+  function fmtCurrency(n, sym) {
+    const abs = Math.round(Math.abs(n));
+    return sym === '₪' ? '₪' + abs.toLocaleString() : '$' + abs.toLocaleString();
+  }
+
+  function calcTax() {
+    const country = $('tax-country').value;
+    const status  = $('tax-status').value;
+    const gross   = parseFloat($('tax-salary').value) || 0;
+    const isISR   = country === 'isr';
+    const sym     = isISR ? '₪' : '$';
+
+    // update symbol + slider range
+    $('tax-symbol').textContent = sym;
+    const slMax = isISR ? 2000000 : 500000;
+    const slMaxLabel = isISR ? '₪2M' : '$500K';
+    const slider = $('tax-salarySlider');
+    slider.max = slMax;
+    if (parseFloat(slider.value) > slMax) slider.value = slMax;
+    $('tax-sl-min').textContent = sym + '0';
+    $('tax-sl-max').textContent = slMaxLabel;
+    $('tax-status-label').textContent = isISR ? 'Marital Status' : 'Filing Status';
+
+    const r = isISR ? taxISR(gross, status) : taxUSA(gross, status);
+    const net = gross - r.total;
+    const effRate = gross > 0 ? (r.total / gross * 100) : 0;
+
+    // breakdown card
+    const bd = $('tax-breakdown');
+    const dots = ['#e07060','#c9a84c','#6abf8a'];
+    let html = `<div class="tax-row gross">
+      <div class="tax-row-label"><span class="tax-row-dot" style="background:var(--gold-light)"></span>Gross Salary</div>
+      <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(gross, sym)}</div></div>
+    </div>`;
+    r.labels.forEach((lbl, i) => {
+      if (r.amounts[i] <= 0) return;
+      const pct = gross > 0 ? (r.amounts[i] / gross * 100).toFixed(1) : '0.0';
+      html += `<div class="tax-row">
+        <div class="tax-row-label"><span class="tax-row-dot" style="background:${dots[i]}"></span>${lbl}</div>
+        <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(r.amounts[i], sym)}</div><div class="tax-row-rate">${pct}% of gross</div></div>
+      </div>`;
+    });
+    html += `<div class="tax-row total">
+      <div class="tax-row-label">Total Deductions</div>
+      <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(r.total, sym)}</div><div class="tax-row-rate">${effRate.toFixed(1)}% of gross</div></div>
+    </div>`;
+    bd.innerHTML = html;
+
+    // summary stats
+    $('tax-net-annual').textContent  = fmtCurrency(net, sym);
+    $('tax-net-monthly').textContent = fmtCurrency(net / 12, sym);
+    $('tax-eff-rate').textContent    = effRate.toFixed(1) + '%';
+    $('tax-total-ded').textContent   = fmtCurrency(r.total, sym);
+
+    // pain bar
+    const barPct = Math.min(effRate, 70);
+    $('tax-pain-bar').style.width = (barPct / 70 * 100) + '%';
+    $('tax-pain-pct').textContent = effRate.toFixed(1) + '%';
+
+    const v = effRate < 15 ? 'Low tax burden — you keep most of what you earn.'
+            : effRate < 25 ? 'Moderate tax burden — a fair share goes to the government.'
+            : effRate < 35 ? 'High tax burden — over a third of your income is taxed.'
+            : 'Very high tax burden — nearly half your earnings go to taxes.';
+    $('tax-verdict').textContent = v;
+  }
+
+  $('tax-country').addEventListener('change', () => {
+    // reset salary to a sensible default for the country
+    const isISR = $('tax-country').value === 'isr';
+    $('tax-salary').value = isISR ? 200000 : 80000;
+    $('tax-salarySlider').value = isISR ? 200000 : 80000;
+    calcTax();
+  });
+  $('tax-status').addEventListener('change', calcTax);
+  $('tax-salary').addEventListener('input', () => { $('tax-salarySlider').value = $('tax-salary').value; calcTax(); });
+  $('tax-salarySlider').addEventListener('input', () => { $('tax-salary').value = $('tax-salarySlider').value; calcTax(); });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  calcLoan();
+  calcCC();
+  calcBvR();
+  calcSav();
+  calcTax();
+
+  // ── PWA ───────────────────────────────────────────────────────────────────
+  if('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+</script>
+</body>
+</html>
