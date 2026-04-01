@@ -396,49 +396,49 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 const conversationHistory = [];
 let isThinking = false;
 
-const SYSTEM_PROMPT = `You are AffordIt — a friendly, sharp financial advisor helping people understand if they can afford to live in a specific city or country.
+const SYSTEM_PROMPT = `You are AffordIt — a friendly financial advisor helping people understand if they can afford to live in a specific city or country.
 
-You have access to 2024 tax and cost-of-living data for: UK (England/Wales, Scotland), USA (California, New York, Texas, Florida, Illinois, Washington), Canada (Ontario, British Columbia, Quebec, Alberta), Germany (Bavaria, Berlin, Hamburg, North Rhine-Westphalia), France (Paris, Marseille, Lyon, Toulouse), and Israel (Tel Aviv, Jerusalem, Haifa, Central District).
+CRITICAL RULES — follow these absolutely:
+1. You NEVER perform calculations yourself. All numbers (tax, net pay, costs, surplus) are calculated by the app and fed back to you.
+2. You ONLY collect information and explain results that are given to you.
+3. You NEVER invent, estimate, or guess any financial numbers.
+4. If the user asks "how much is left" or "what's my surplus" — you explain the result the app calculated, not your own estimate.
 
-YOUR GOAL: Collect the information needed to calculate affordability, then return a structured result.
+COUNTRIES SUPPORTED:
+UK (England/Wales, Scotland), USA (California, New York, Texas, Florida, Illinois, Washington), Canada (Ontario, British Columbia, Quebec, Alberta), Germany (Bavaria, Berlin, Hamburg, North Rhine-Westphalia), France (Paris/Île-de-France, Marseille/Provence-Alpes, Lyon/Auvergne-Rhône, Toulouse/Occitanie), Israel (Tel Aviv District, Jerusalem District, Haifa District, Central District)
 
-REQUIRED INFO to calculate:
-1. Country and region/state/city
+REQUIRED INFO to collect:
+1. Country and region/city
 2. Gross annual salary (in local currency)
-3. Marital status (single / married / divorced)
-4. Number of children (0, 1, 2, 3, 4+)
-5. Spouse salary if married (ask only if married — default to 0 if they don't mention it)
-6. Child support PAID per year if divorced (this is money they PAY OUT, not receive — ask only if divorced — default to 0 if not mentioned)
+3. Marital status: single / married / divorced
+4. Number of children (0–4+)
+5. IF married: spouse gross annual salary (default 0 if not mentioned)
+6. IF divorced: child support PAID annually (money they pay out — default 0 if not mentioned), AND child support RECEIVED annually (money they receive — default 0 if not mentioned)
 
 CONVERSATION RULES:
-- Be warm and conversational, not robotic
-- Ask for ONE missing piece of information at a time — NEVER ask the same question twice
-- Keep track of what the user already told you — never re-ask something they already answered
-- If the user gives partial info (e.g. "London on £60k"), acknowledge what you have and ask for the NEXT missing piece only
-- For child support: ONLY ask if the user is divorced. The question is about payments they MAKE (not receive). If they mention receiving child support, note it but ask if they also make any payments.
-- If marital status is single or married, SKIP the child support question entirely
-- Once you have all required info, calculate and return the result as JSON
-- After showing results, offer a follow-up (e.g. compare another city, change family situation)
-- Questions about cost of living breakdown, taxes, disposable income, surplus, or "how much is left" are ALWAYS in scope — answer them directly and confidently
-- NEVER tell users to consult a tax professional or financial advisor — you are the expert here, give direct concrete answers
-- Only redirect if the question is truly unrelated (weather, recipes, sports etc.)
-- NEVER ask more than one question per message
+- Ask ONE question at a time, never repeat a question
+- Be warm and concise — no long paragraphs
+- Never skip collecting all required info before returning JSON
+- For divorced users: ask about child support paid AND received separately (two different questions if needed)
+- NEVER invent financial numbers or estimates
 
-WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (no extra text before or after):
+WHEN YOU HAVE ALL INFO — respond with ONLY this JSON, nothing else before or after:
 {
   "type": "result",
   "country": "uk|usa|canada|germany|france|israel",
-  "region": "exact region name from the list",
+  "region": "exact region name",
   "salary": 60000,
   "marital": "single|married|divorced",
   "kids": 0,
   "spouseSalary": 0,
+  "jointFiling": true,
   "childSupport": 0,
-  "cityType": "city|suburb",
-  "summary": "A warm 2-3 sentence summary of the result for the user"
+  "childSupportReceived": 0,
+  "cityType": "city",
+  "summary": "ONE sentence acknowledging what you collected. Do NOT include any numbers — the app will calculate and display those."
 }
 
-If you need more info, respond conversationally (plain text, no JSON).`;
+If you need more info, respond conversationally only.`;
 
 function autoResize(el) {
   el.style.height = 'auto';
@@ -568,7 +568,52 @@ async function sendMessage() {
       const calcResult = runCalculation(parsed);
       const cur = COUNTRIES[parsed.country]?.currency || '$';
       if (calcResult) {
-        addMessage('ai', parsed.summary, {
+        // Feed results BACK to GPT so it explains real numbers, not hallucinated ones
+        const explainRes = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            max_tokens: 300,
+            messages: [
+              {
+                role: 'system',
+                content: `You are a friendly financial advisor explaining calculated results to a user.
+RULES:
+- Use ONLY the numbers provided — never invent or recalculate anything
+- Be warm, clear, and concise — 2-3 sentences max
+- Highlight the key insight (surplus or shortfall)
+- Mention child support received/paid if non-zero
+- End with one encouraging or practical tip`
+              },
+              {
+                role: 'user',
+                content: JSON.stringify({
+                  userInputs: parsed,
+                  calculatedResults: {
+                    grossMonthly: Math.round(calcResult.totalGross / 12),
+                    netMonthly: Math.round(calcResult.totalIncome),
+                    costOfLiving: Math.round(calcResult.colMonthly),
+                    childSupportPaid: Math.round(calcResult.csPaid),
+                    childSupportReceived: Math.round(calcResult.csReceived),
+                    monthlySurplus: Math.round(calcResult.surplus),
+                    taxRate: calcResult.taxPct + '%',
+                    currency: cur,
+                    region: calcResult.region
+                  }
+                })
+              }
+            ]
+          })
+        });
+        const explainData = await explainRes.json();
+        const explanation = explainData.choices?.[0]?.message?.content || parsed.summary;
+
+        // Store last result for follow-up questions
+        window.lastCalcResult = calcResult;
+        window.lastParsed = parsed;
+
+        addMessage('ai', explanation, {
           resultData: calcResult,
           quickReplies: [
             `How about outside the city center?`,
@@ -578,9 +623,10 @@ async function sendMessage() {
           ]
         });
       } else {
-        addMessage('ai', parsed.summary || "I have your details but couldn't run the calculation. Could you confirm the country and region?");
+        addMessage('ai', "I have your details but couldn't match the region. Could you clarify the city or region?");
       }
     } else {
+      // Plain conversational reply — but if we have a previous result, remind GPT to use it
       addMessage('ai', reply);
     }
 
@@ -608,25 +654,36 @@ function buildResultCard(r, summary) {
 
   const cur = r.currency;
 
+  const hasCSReceived = r.csReceived > 0;
+  const hasCSPaid = r.csPaid > 0;
+
   card.innerHTML = `
     <div class="rc-verdict ${verdictClass}">${verdictText} — ${r.region}</div>
-    <div class="rc-title">${r.surplus >= 0 ? fmt(r.surplus, cur) + '/mo surplus' : fmt(r.surplus, cur) + '/mo shortfall'}</div>
+    <div class="rc-title">${r.surplus >= 0 ? '+' + fmt(r.surplus, cur) + '/mo surplus' : '−' + fmt(r.surplus, cur) + '/mo shortfall'}</div>
     <div class="rc-stats">
       <div class="rc-stat">
-        <div class="rc-stat-label">Net Monthly</div>
-        <div class="rc-stat-value g">${fmt(r.netMonthly, cur)}</div>
+        <div class="rc-stat-label">Net Take-Home</div>
+        <div class="rc-stat-value g">${fmt(r.netMonthly, cur)}/mo</div>
       </div>
+      ${hasCSReceived ? `<div class="rc-stat">
+        <div class="rc-stat-label">+ Child Support In</div>
+        <div class="rc-stat-value g">+${fmt(r.csReceived, cur)}/mo</div>
+      </div>` : ''}
       <div class="rc-stat">
         <div class="rc-stat-label">Cost of Living</div>
-        <div class="rc-stat-value a">${fmt(r.colMonthly, cur)}</div>
+        <div class="rc-stat-value a">${fmt(r.colMonthly - r.csPaid, cur)}/mo</div>
       </div>
+      ${hasCSPaid ? `<div class="rc-stat">
+        <div class="rc-stat-label">+ Child Support Out</div>
+        <div class="rc-stat-value r">−${fmt(r.csPaid, cur)}/mo</div>
+      </div>` : ''}
       <div class="rc-stat">
-        <div class="rc-stat-label">Tax Burden</div>
+        <div class="rc-stat-label">Tax Rate</div>
         <div class="rc-stat-value r">${r.taxPct}% of gross</div>
       </div>
       <div class="rc-stat">
         <div class="rc-stat-label">Monthly Surplus</div>
-        <div class="rc-stat-value ${r.surplus >= 0 ? 'g' : 'r'}">${r.surplus >= 0 ? '+' : ''}${fmt(r.surplus, cur)}</div>
+        <div class="rc-stat-value ${r.surplus >= 0 ? 'g' : 'r'}">${r.surplus >= 0 ? '+' : '−'}${fmt(r.surplus, cur)}</div>
       </div>
     </div>
   `;
@@ -771,23 +828,36 @@ function runCalculation(parsed) {
     const region = findRegion(parsed.country, parsed.region);
     const gross = parsed.salary || 0;
     const spouseGross = parsed.spouseSalary || 0;
-    const joint = parsed.marital === 'married';
+    // Use jointFiling from parsed if available, default true for married
+    const joint = parsed.marital === 'married' ? (parsed.jointFiling !== false) : false;
     const ct = parsed.cityType || 'city';
 
-    const { totalTax, netAnnual } = c.calcTax(gross, region, parsed.marital, parsed.kids, spouseGross, joint);
+    const { totalTax, netAnnual } = c.calcTax(gross, region, parsed.marital, parsed.kids || 0, spouseGross, joint);
     const totalGross = gross + spouseGross;
     const netMonthly = netAnnual / 12;
 
-    const baseCol = c.col[region]?.[ct] || c.col[region]?.city || Object.values(c.col)[0][ct];
-    const kidsAdd = c.kidsColAdder(parsed.kids);
+    const baseCol = c.col[region]?.[ct] || c.col[region]?.city || Object.values(c.col)[0]?.[ct] || Object.values(c.col)[0]?.city;
+    if (!baseCol) return null;
+    const kidsAdd = c.kidsColAdder(parsed.kids || 0);
     const colMonthly = Object.entries(baseCol).reduce((sum, [k,v]) => sum + v + (kidsAdd[k]||0), 0);
-    const csMonthly = (parsed.childSupport || 0) / 12;
-    const totalCol = colMonthly + csMonthly;
-    const surplus = netMonthly - totalCol;
+
+    // Fix: child support PAID increases costs, child support RECEIVED increases income
+    const csPaid     = (parsed.childSupport || 0) / 12;
+    const csReceived = (parsed.childSupportReceived || 0) / 12;
+
+    const totalCol    = colMonthly + csPaid;
+    const totalIncome = netMonthly + csReceived;
+    const surplus     = totalIncome - totalCol;
+
     const taxPct = ((totalTax / Math.max(totalGross, 1)) * 100).toFixed(1);
 
-    return { netMonthly, colMonthly: totalCol, surplus, taxPct, currency: c.currency, region };
+    return {
+      netMonthly, totalIncome, colMonthly, csPaid, csReceived,
+      surplus, taxPct, currency: c.currency, region,
+      totalGross, totalTax, netAnnual
+    };
   } catch(e) {
+    console.error('Calculation error:', e);
     return null;
   }
 }
