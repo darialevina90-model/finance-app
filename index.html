@@ -1,1146 +1,982 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Financial Clarity</title>
+  <title>Can You Afford to Live There?</title>
   <link rel="manifest" href="manifest.json"/>
-  <meta name="theme-color" content="#1a1916"/>
+  <meta name="theme-color" content="#0f0e0c"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="FinClarity"/>
+  <meta name="apple-mobile-web-app-title" content="AffordIt"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0f0e0c;
-      --surface: #1a1916;
-      --surface2: #242220;
-      --border: #2e2c29;
-      --gold: #c9a84c;
-      --gold-light: #e8c97a;
-      --gold-dim: rgba(201,168,76,0.12);
-      --text: #f0ece4;
-      --text-dim: #7a7670;
-      --text-mid: #b0aa9e;
-      --red: #c0392b;
-      --green: #27ae60;
+      --bg: #0f0e0c; --surface: #1a1916; --surface2: #242220; --border: #2e2c29;
+      --gold: #c9a84c; --gold-light: #e8c97a; --gold-dim: rgba(201,168,76,0.12);
+      --text: #f0ece4; --text-dim: #7a7670; --text-mid: #b0aa9e;
+      --green: #6abf8a; --green-dim: rgba(106,191,138,0.1);
+      --red: #e07060; --red-dim: rgba(224,112,96,0.1);
+      --amber: #e8a84c; --amber-dim: rgba(232,168,76,0.1);
     }
+    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; min-height:100vh; padding:0 0 80px; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 300;
-      min-height: 100vh;
-      padding: 0 0 64px;
-    }
+    .hero { padding:48px 24px 36px; max-width:900px; margin:0 auto; }
+    .eyebrow { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.2em; color:var(--gold); text-transform:uppercase; margin-bottom:12px; }
+    h1 { font-family:'DM Serif Display',serif; font-size:clamp(2rem,5vw,3.2rem); line-height:1.1; font-weight:400; }
+    h1 em { font-style:italic; color:var(--gold-light); }
+    .subtitle { margin-top:12px; color:var(--text-mid); font-size:15px; max-width:520px; line-height:1.6; }
 
-    nav {
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      display: flex;
-      align-items: center;
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      overflow-x: auto;
-    }
+    .page { max-width:900px; margin:0 auto; padding:0 24px; }
 
-    .nav-brand {
-      font-family: 'DM Serif Display', serif;
-      font-size: 15px;
-      color: var(--gold-light);
-      padding: 18px 24px 18px 0;
-      margin-right: 8px;
-      border-right: 1px solid var(--border);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
+    /* SECTION CARDS */
+    .section-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; margin-bottom:20px; }
+    .section-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.18em; color:var(--gold); text-transform:uppercase; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
 
-    .nav-tabs { display: flex; }
+    .fields-row { display:grid; gap:16px; }
+    .cols-3 { grid-template-columns:1fr 1fr 1fr; }
+    .cols-2 { grid-template-columns:1fr 1fr; }
+    .cols-4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+    @media(max-width:700px){ .cols-3,.cols-2,.cols-4 { grid-template-columns:1fr 1fr; } }
+    @media(max-width:480px){ .cols-3,.cols-2,.cols-4 { grid-template-columns:1fr; } }
 
-    .nav-tab {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.13em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      padding: 20px 16px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      transition: color 0.2s, border-color 0.2s;
-      white-space: nowrap;
-      user-select: none;
-      flex-shrink: 0;
-    }
+    .field label { display:block; font-size:12px; color:var(--text-mid); margin-bottom:6px; font-family:'DM Sans',sans-serif; }
+    .field-row { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:border-color 0.2s; height:46px; }
+    .field-row:focus-within { border-color:var(--gold); }
+    .field-prefix { padding:0 12px; font-family:'DM Mono',monospace; font-size:13px; color:var(--gold); background:var(--gold-dim); height:46px; display:flex; align-items:center; flex-shrink:0; border-right:1px solid var(--border); }
+    select, input[type="number"] { flex:1; background:transparent; border:none; outline:none; padding:0 12px; height:46px; font-family:'DM Mono',monospace; font-size:13px; color:var(--text); width:100%; cursor:pointer; }
+    select option { background:#1a1916; }
+    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; }
 
-    .nav-tab:hover { color: var(--text-mid); }
-    .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    /* status pills */
+    .pill-group { display:flex; gap:8px; flex-wrap:wrap; }
+    .pill { padding:8px 16px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-dim); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .pill.active { background:var(--gold-dim); border-color:var(--gold); color:var(--gold); }
 
-    .page { max-width: 860px; margin: 0 auto; padding: 48px 24px 0; }
+    /* spouse toggle */
+    .spouse-section { margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:none; }
+    .spouse-section.visible { display:block; }
 
-    .screen { display: none; }
-    .screen.active { display: block; animation: fadeUp 0.3s ease both; }
+    .toggle-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .toggle-label { font-size:13px; color:var(--text-mid); }
+    .toggle-switch { position:relative; width:40px; height:22px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:11px; transition:0.2s; }
+    .toggle-slider:before { content:''; position:absolute; width:16px; height:16px; left:3px; bottom:3px; background:var(--text-dim); border-radius:50%; transition:0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background:var(--gold); }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(18px); background:#0f0e0c; }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    .calc-btn { width:100%; margin-top:20px; padding:15px; background:var(--gold); color:#0f0e0c; border:none; border-radius:10px; font-family:'DM Mono',monospace; font-size:12px; letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; transition:background 0.2s,transform 0.1s; font-weight:500; }
+    .calc-btn:hover { background:var(--gold-light); }
+    .calc-btn:active { transform:scale(0.99); }
 
-    header { margin-bottom: 40px; }
+    /* RESULTS */
+    .results { display:none; }
+    .results.visible { display:block; animation:fadeUp 0.4s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
-    .eyebrow {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.2em;
-      color: var(--gold);
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
+    .verdict-banner { border-radius:16px; padding:24px 28px; margin-bottom:24px; display:flex; align-items:flex-start; gap:20px; }
+    .verdict-banner.comfortable { background:var(--green-dim); border:1px solid rgba(106,191,138,0.3); }
+    .verdict-banner.tight       { background:var(--amber-dim); border:1px solid rgba(232,168,76,0.3); }
+    .verdict-banner.tough       { background:var(--red-dim);   border:1px solid rgba(224,112,96,0.3); }
+    .verdict-emoji { font-size:36px; flex-shrink:0; margin-top:2px; }
+    .verdict-text .verdict-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; margin-bottom:4px; }
+    .comfortable .verdict-label { color:var(--green); }
+    .tight       .verdict-label { color:var(--amber); }
+    .tough       .verdict-label { color:var(--red); }
+    .verdict-text .verdict-title { font-family:'DM Serif Display',serif; font-size:1.6rem; line-height:1.2; }
+    .verdict-text .verdict-sub { font-size:13px; color:var(--text-mid); margin-top:6px; line-height:1.6; }
 
-    h1 {
-      font-family: 'DM Serif Display', serif;
-      font-size: clamp(2rem, 5vw, 3.2rem);
-      line-height: 1.1;
-      color: var(--text);
-      font-weight: 400;
-    }
+    .stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:20px; }
+    @media(max-width:700px){ .stats-grid { grid-template-columns:1fr 1fr; } }
 
-    h1 em { font-style: italic; color: var(--gold-light); }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 14px; }
+    .stat-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
+    .stat-value { font-family:'DM Serif Display',serif; font-size:1.25rem; color:var(--text); word-break:break-word; }
+    .stat-value.gold  { color:var(--gold-light); }
+    .stat-value.green { color:var(--green); }
+    .stat-value.red   { color:var(--red); }
+    .stat-value.amber { color:var(--amber); }
+    .stat-sub { font-size:10px; color:var(--text-dim); margin-top:3px; }
 
-    .subtitle {
-      margin-top: 12px;
-      color: var(--text-mid);
-      font-size: 15px;
-      max-width: 480px;
-      line-height: 1.6;
-    }
+    .city-toggle { display:flex; gap:8px; margin-bottom:20px; }
+    .city-btn { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; padding:8px 16px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; transition:all 0.2s; }
+    .city-btn.active { background:var(--gold-dim); border-color:var(--gold); color:var(--gold); }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; align-items: start; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+    @media(max-width:640px){ .detail-grid { grid-template-columns:1fr; } }
 
-    @media (max-width: 700px) { .grid, .grid-3 { grid-template-columns: 1fr; } }
+    .detail-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:22px; }
+    .detail-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:18px; }
 
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+    .detail-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; }
+    .detail-row:last-child { border-bottom:none; }
+    .dr-label { color:var(--text-mid); }
+    .dr-note { color:var(--text-dim); font-size:10px; }
+    .dr-value { font-family:'DM Mono',monospace; font-size:12px; color:var(--text); }
+    .dr-value.neg { color:var(--red); }
+    .dr-value.pos { color:var(--green); }
+    .dr-value.bold { color:var(--gold-light); font-weight:500; }
+    .dr-divider { border-top:1px solid var(--border); margin-top:4px; padding-top:12px; }
 
-    .card-title {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.18em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      margin-bottom: 24px;
-    }
+    .surplus-section { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:20px; }
+    .surplus-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:20px; }
+    .bar-wrap { margin-bottom:14px; }
+    .bar-label-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-bottom:5px; font-family:'DM Mono',monospace; }
+    .bar-bg { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .bar-fill { height:100%; border-radius:4px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+    .bar-fill.green { background:var(--green); }
+    .bar-fill.amber { background:var(--amber); }
+    .bar-fill.red   { background:var(--red); }
+    .surplus-note { font-size:13px; color:var(--text-mid); line-height:1.6; margin-top:12px; }
 
-    .field { margin-bottom: 24px; }
-    .field:last-child { margin-bottom: 0; }
+    /* child support callout */
+    .cs-callout { background:var(--red-dim); border:1px solid rgba(224,112,96,0.25); border-radius:10px; padding:14px 16px; margin-top:12px; font-size:13px; color:var(--text-mid); line-height:1.5; }
+    .cs-callout strong { color:var(--red); }
 
-    .field label { display: block; font-size: 13px; color: var(--text-mid); margin-bottom: 8px; }
-
-    .field-row {
-      display: flex;
-      align-items: center;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-
-    .field-row:focus-within { border-color: var(--gold); }
-
-    .field-prefix, .field-suffix {
-      padding: 0 14px;
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      color: var(--gold);
-      background: var(--gold-dim);
-      height: 48px;
-      display: flex;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .field-row input[type="number"] {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      padding: 0 14px;
-      height: 48px;
-      font-family: 'DM Mono', monospace;
-      font-size: 15px;
-      color: var(--text);
-      width: 100%;
-    }
-
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
-
-    .slider-wrap { margin-top: 10px; }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 3px;
-      background: var(--border);
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px; height: 18px;
-      border-radius: 50%;
-      background: var(--gold);
-      border: 3px solid var(--bg);
-      box-shadow: 0 0 0 1px var(--gold);
-      transition: transform 0.15s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-
-    .slider-labels {
-      display: flex;
-      justify-content: space-between;
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      color: var(--text-dim);
-      margin-top: 6px;
-    }
-
-    .results-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-top: 24px; }
-
-    .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-    .results-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-    .results-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-
-    @media (max-width: 640px) {
-      .results-grid, .results-grid.cols-2, .results-grid.cols-4 { grid-template-columns: 1fr 1fr; }
-    }
-
-    .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 16px; }
-
-    .stat-label {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--text); word-break: break-word; }
-    .stat-value.highlight { color: var(--gold-light); }
-    .stat-value.danger    { color: #e07060; }
-    .stat-value.safe      { color: #6abf8a; }
-    .stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
-
-    .pain-wrap { margin-bottom: 0; }
-
-    .pain-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-
-    .pain-title {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      color: var(--text-dim);
-      text-transform: uppercase;
-    }
-
-    .pain-pct { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); }
-
-    .pain-bar-bg { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-
-    .pain-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      background: linear-gradient(90deg, var(--green), var(--gold), var(--red));
-      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
-    }
-
-    .verdict { margin-top: 10px; font-size: 13px; color: var(--text-mid); line-height: 1.6; }
-
-    .chart-wrap { position: relative; height: 220px; }
-
-    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
-
-    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
-
-    .compare-table th {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      text-align: left;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .compare-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-mid); }
-    .compare-table tr:last-child td { border-bottom: none; }
-
-    .compare-table td:first-child {
-      color: var(--text-dim);
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.05em;
-    }
-
-    .val-min { color: #6abf8a; font-family: 'DM Mono', monospace; }
-    .val-pay { color: var(--gold-light); font-family: 'DM Mono', monospace; }
-    .val-bad { color: #e07060; font-family: 'DM Mono', monospace; }
-
-    .verdict-box { border-radius: 12px; padding: 20px 22px; }
-    .verdict-box.buy  { background: rgba(106,191,138,0.08); border: 1px solid rgba(106,191,138,0.25); }
-    .verdict-box.rent { background: rgba(201,168,76,0.08);  border: 1px solid rgba(201,168,76,0.25); }
-    .verdict-box.tied { background: var(--surface2); border: 1px solid var(--border); }
-
-    .verdict-box .vb-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
-    .verdict-box.buy  .vb-label { color: #6abf8a; }
-    .verdict-box.rent .vb-label { color: var(--gold); }
-    .verdict-box.tied .vb-label { color: var(--text-dim); }
-    .verdict-box .vb-title { font-family: 'DM Serif Display', serif; font-size: 1.5rem; margin-bottom: 8px; }
-    .verdict-box .vb-body { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
-
-    .milestone-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-    .milestone-row:last-child { border-bottom: none; }
-    .milestone-icon { font-size: 20px; flex-shrink: 0; width: 36px; text-align: center; }
-    .milestone-label { flex: 1; font-size: 13px; color: var(--text-mid); }
-    .milestone-value { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--gold); text-align: right; }
-    .milestone-done .milestone-label { color: #6abf8a; }
-    .milestone-done .milestone-value { color: #6abf8a; }
-
-    .footnote { margin-top: 40px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.05em; text-align: center; }
-
-    .min-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--gold); margin-left: 8px; letter-spacing: 0.05em; }
-
-    .field-row select {
-      flex: 1; background: transparent; border: none; outline: none;
-      padding: 0 14px; height: 48px; font-family: 'DM Sans', sans-serif;
-      font-size: 14px; color: var(--text); width: 100%; cursor: pointer;
-      -webkit-appearance: none; appearance: none;
-    }
-    .field-row select option { background: var(--surface2); color: var(--text); }
-    .select-row { position: relative; }
-    .select-row::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--gold); font-size: 12px; pointer-events: none; }
-
-    .tax-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-    .tax-row:last-child { border-bottom: none; }
-    .tax-row-label { color: var(--text-mid); display: flex; align-items: center; gap: 8px; }
-    .tax-row-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .tax-row-right { text-align: right; }
-    .tax-row-amount { font-family: 'DM Mono', monospace; color: var(--text); font-size: 13px; }
-    .tax-row-rate { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
-    .tax-row.total .tax-row-label { color: var(--text); font-size: 13px; }
-    .tax-row.total .tax-row-amount { color: #e07060; }
-    .tax-row.gross .tax-row-label { color: var(--text); }
-    .tax-row.gross .tax-row-amount { color: var(--gold-light); }
+    .footnote { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); letter-spacing:0.05em; text-align:center; margin-top:40px; }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-brand">Financial Clarity</div>
-  <div class="nav-tabs">
-    <div class="nav-tab active" data-screen="loan">Loan Calculator</div>
-    <div class="nav-tab" data-screen="cc">Credit Card</div>
-    <div class="nav-tab" data-screen="bvr">Buy vs Rent</div>
-    <div class="nav-tab" data-screen="sav">Savings Goal</div>
-    <div class="nav-tab" data-screen="tax">Tax Calculator</div>
-  </div>
-</nav>
+<div class="hero">
+  <div class="eyebrow">2024 Data · 6 Countries · Family-Aware</div>
+  <h1>Can your family <em>afford</em><br/>to live there?</h1>
+  <p class="subtitle">Enter your household income, family situation, and location. Get a real picture of what you take home — and whether it's enough.</p>
+</div>
 
 <div class="page">
 
-  <!-- ══ SCREEN 1: LOAN ══ -->
-  <div class="screen active" id="screen-loan">
-    <header>
-      <div class="eyebrow">True Cost Analysis</div>
-      <h1>What does your loan<br/><em>really</em> cost you?</h1>
-      <p class="subtitle">Enter your loan details. See the true price — not just the monthly payment.</p>
-    </header>
-    <div class="grid">
-      <div class="card">
-        <div class="card-title">Loan Details</div>
-        <div class="field">
-          <label>Loan Amount</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="l-principal" value="20000" min="1000" max="1000000" step="500"/></div>
-          <div class="slider-wrap"><input type="range" id="l-principalSlider" min="1000" max="200000" step="500" value="20000"/><div class="slider-labels"><span>$1K</span><span>$200K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Annual Interest Rate</label>
-          <div class="field-row"><input type="number" id="l-rate" value="7.5" min="0.1" max="40" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="l-rateSlider" min="0.1" max="40" step="0.1" value="7.5"/><div class="slider-labels"><span>0.1%</span><span>40%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Loan Term (years)</label>
-          <div class="field-row"><input type="number" id="l-years" value="5" min="1" max="30" step="1" style="padding-left:14px"/><span class="field-suffix">yrs</span></div>
-          <div class="slider-wrap"><input type="range" id="l-yearsSlider" min="1" max="30" step="1" value="5"/><div class="slider-labels"><span>1 yr</span><span>30 yrs</span></div></div>
-        </div>
+  <!-- LOCATION & SALARY -->
+  <div class="section-card">
+    <div class="section-title">Location & Income</div>
+    <div class="fields-row cols-3">
+      <div class="field">
+        <label>Country</label>
+        <div class="field-row"><select id="country" onchange="updateRegions()">
+          <option value="uk">🇬🇧 United Kingdom</option>
+          <option value="usa">🇺🇸 United States</option>
+          <option value="canada">🇨🇦 Canada</option>
+          <option value="germany">🇩🇪 Germany</option>
+          <option value="france">🇫🇷 France</option>
+          <option value="israel">🇮🇱 Israel</option>
+        </select></div>
       </div>
-      <div class="card">
-        <div class="card-title">Principal vs Interest Over Time</div>
-        <div class="chart-wrap"><canvas id="loanChart"></canvas></div>
+      <div class="field">
+        <label>Region / State</label>
+        <div class="field-row"><select id="region"></select></div>
+      </div>
+      <div class="field">
+        <label>Your Gross Annual Salary</label>
+        <div class="field-row">
+          <span class="field-prefix" id="currencySymbol">£</span>
+          <input type="number" id="salary" value="60000" min="0" step="1000"/>
+        </div>
       </div>
     </div>
-    <div class="results-card">
-      <div class="card-title">True Cost Breakdown</div>
-      <div class="results-grid">
-        <div class="stat"><div class="stat-label">Monthly Payment</div><div class="stat-value highlight" id="l-monthly">—</div></div>
-        <div class="stat"><div class="stat-label">Total Interest Paid</div><div class="stat-value danger" id="l-totalInterest">—</div><div class="stat-sub" id="l-interestPct"></div></div>
-        <div class="stat"><div class="stat-label">Total Amount Paid</div><div class="stat-value" id="l-totalPaid">—</div></div>
-      </div>
-      <hr class="divider"/>
-      <div class="pain-wrap">
-        <div class="pain-label-row"><span class="pain-title">Interest Pain Meter</span><span class="pain-pct" id="l-painPct">0%</span></div>
-        <div class="pain-bar-bg"><div class="pain-bar-fill" id="l-painBar" style="width:0%"></div></div>
-        <p class="verdict" id="l-verdict"></p>
-      </div>
-    </div>
-    <p class="footnote">Estimates based on fixed-rate amortization. Actual terms may vary.</p>
   </div>
 
-  <!-- ══ SCREEN 2: CREDIT CARD ══ -->
-  <div class="screen" id="screen-cc">
-    <header>
-      <div class="eyebrow">Credit Card Reality Check</div>
-      <h1>How long until you're<br/><em>actually</em> free?</h1>
-      <p class="subtitle">Most people only pay the minimum. See what that really costs — and how much you save by paying more.</p>
-    </header>
-    <div class="">
-      <div class="card" style="max-width:500px">
-        <div class="card-title">Card Details</div>
-        <div class="field">
-          <label>Current Balance</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="cc-balance" value="5000" min="100" max="100000" step="100"/></div>
-          <div class="slider-wrap"><input type="range" id="cc-balanceSlider" min="100" max="50000" step="100" value="5000"/><div class="slider-labels"><span>$100</span><span>$50K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Annual Interest Rate (APR)</label>
-          <div class="field-row"><input type="number" id="cc-apr" value="22" min="1" max="60" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="cc-aprSlider" min="1" max="60" step="0.1" value="22"/><div class="slider-labels"><span>1%</span><span>60%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Your Monthly Payment <span class="min-hint" id="cc-minHint"></span></label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="cc-payment" value="200" min="10" max="10000" step="10"/></div>
-          <div class="slider-wrap"><input type="range" id="cc-paymentSlider" min="10" max="2000" step="10" value="200"/><div class="slider-labels"><span id="cc-sliderMinLabel">$10</span><span>$2K</span></div></div>
-        </div>
-      </div>
+  <!-- FAMILY SITUATION -->
+  <div class="section-card">
+    <div class="section-title">Family Situation</div>
 
-    </div>
-    <div class="results-card">
-      <div class="card-title">Payoff Analysis</div>
-      <div class="results-grid cols-4">
-        <div class="stat"><div class="stat-label">Min. Payment Today</div><div class="stat-value" id="cc-minPayment">—</div><div class="stat-sub">2% of balance</div></div>
-        <div class="stat"><div class="stat-label">Months to Pay Off</div><div class="stat-value highlight" id="cc-months">—</div><div class="stat-sub" id="cc-monthsSub"></div></div>
-        <div class="stat"><div class="stat-label">Total Interest</div><div class="stat-value danger" id="cc-interest">—</div></div>
-        <div class="stat"><div class="stat-label">Total Paid</div><div class="stat-value" id="cc-total">—</div></div>
+    <div class="fields-row cols-2" style="margin-bottom:20px">
+      <div class="field">
+        <label>Marital Status</label>
+        <div class="pill-group" id="maritalGroup">
+          <button class="pill active" onclick="setMarital('single')">Single</button>
+          <button class="pill" onclick="setMarital('married')">Married</button>
+          <button class="pill" onclick="setMarital('divorced')">Divorced</button>
+        </div>
       </div>
-      <hr class="divider"/>
-      <div class="card-title" style="margin-bottom:12px">Minimum Payment vs Your Payment</div>
-      <table class="compare-table">
-        <thead><tr><th></th><th>Minimum Only</th><th>Your Payment</th><th>You Save</th></tr></thead>
-        <tbody>
-          <tr><td>Months to payoff</td><td class="val-bad" id="cc-cmp-minMonths">—</td><td class="val-pay" id="cc-cmp-payMonths">—</td><td class="val-min" id="cc-cmp-saveMonths">—</td></tr>
-          <tr><td>Total interest paid</td><td class="val-bad" id="cc-cmp-minInterest">—</td><td class="val-pay" id="cc-cmp-payInterest">—</td><td class="val-min" id="cc-cmp-saveInterest">—</td></tr>
-          <tr><td>Total amount paid</td><td class="val-bad" id="cc-cmp-minTotal">—</td><td class="val-pay" id="cc-cmp-payTotal">—</td><td class="val-min" id="cc-cmp-saveTotal">—</td></tr>
-        </tbody>
-      </table>
-      <hr class="divider"/>
-      <div class="pain-wrap">
-        <div class="pain-label-row"><span class="pain-title">Debt Burden Meter</span><span class="pain-pct" id="cc-painPct"></span></div>
-        <div class="pain-bar-bg"><div class="pain-bar-fill" id="cc-painBar" style="width:0%"></div></div>
-        <p class="verdict" id="cc-verdict"></p>
+      <div class="field">
+        <label>Number of Children</label>
+        <div class="pill-group" id="kidsGroup">
+          <button class="pill active" onclick="setKids(0)">None</button>
+          <button class="pill" onclick="setKids(1)">1</button>
+          <button class="pill" onclick="setKids(2)">2</button>
+          <button class="pill" onclick="setKids(3)">3</button>
+          <button class="pill" onclick="setKids(4)">4+</button>
+        </div>
       </div>
     </div>
-    <p class="footnote">Min payment = 2% of balance or $25, whichever is higher. Fixed payment assumed for your payment scenario.</p>
-  </div>
 
-  <!-- ══ SCREEN 3: BUY VS RENT ══ -->
-  <div class="screen" id="screen-bvr">
-    <header>
-      <div class="eyebrow">The Big Decision</div>
-      <h1>Should you buy<br/>or <em>keep renting?</em></h1>
-      <p class="subtitle">The answer depends on how long you stay, what the market does, and costs most people forget to include.</p>
-    </header>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-title">If You Buy</div>
+    <!-- Spouse section (shows when married) -->
+    <div class="spouse-section" id="spouseSection">
+      <div class="fields-row cols-2">
         <div class="field">
-          <label>Home Price</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="bvr-price" value="500000" min="50000" max="5000000" step="5000"/></div>
-          <div class="slider-wrap"><input type="range" id="bvr-priceSlider" min="50000" max="2000000" step="5000" value="500000"/><div class="slider-labels"><span>$50K</span><span>$2M</span></div></div>
-        </div>
-        <div class="field">
-          <label>Down Payment</label>
-          <div class="field-row"><input type="number" id="bvr-down" value="20" min="3" max="100" step="1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-downSlider" min="3" max="60" step="1" value="20"/><div class="slider-labels"><span>3%</span><span>60%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Mortgage Rate</label>
-          <div class="field-row"><input type="number" id="bvr-rate" value="7" min="1" max="15" step="0.1" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-rateSlider" min="1" max="15" step="0.1" value="7"/><div class="slider-labels"><span>1%</span><span>15%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Annual Home Appreciation</label>
-          <div class="field-row"><input type="number" id="bvr-appr" value="3" min="0" max="15" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-apprSlider" min="0" max="15" step="0.5" value="3"/><div class="slider-labels"><span>0%</span><span>15%</span></div></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">If You Rent</div>
-        <div class="field">
-          <label>Monthly Rent</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="bvr-rent" value="2500" min="300" max="20000" step="100"/></div>
-          <div class="slider-wrap"><input type="range" id="bvr-rentSlider" min="300" max="10000" step="100" value="2500"/><div class="slider-labels"><span>$300</span><span>$10K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Annual Rent Increase</label>
-          <div class="field-row"><input type="number" id="bvr-rentInc" value="3" min="0" max="15" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-rentIncSlider" min="0" max="15" step="0.5" value="3"/><div class="slider-labels"><span>0%</span><span>15%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Investment Return on Down Payment</label>
-          <div class="field-row"><input type="number" id="bvr-invest" value="7" min="0" max="20" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-investSlider" min="0" max="20" step="0.5" value="7"/><div class="slider-labels"><span>0%</span><span>20%</span></div></div>
-        </div>
-        <div class="field">
-          <label>Time Horizon</label>
-          <div class="field-row"><input type="number" id="bvr-years" value="10" min="1" max="30" step="1" style="padding-left:14px"/><span class="field-suffix">yrs</span></div>
-          <div class="slider-wrap"><input type="range" id="bvr-yearsSlider" min="1" max="30" step="1" value="10"/><div class="slider-labels"><span>1 yr</span><span>30 yrs</span></div></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Net Cost Over Time</div>
-        <div class="chart-wrap"><canvas id="bvrChart"></canvas></div>
-      </div>
-    </div>
-    <div class="results-card">
-      <div class="card-title">After <span id="bvr-yearsLabel">10</span> Years</div>
-      <div class="results-grid cols-4" style="margin-bottom:24px">
-        <div class="stat"><div class="stat-label">Buy: Total Cost</div><div class="stat-value danger" id="bvr-buyCost">—</div><div class="stat-sub">incl. interest, tax, maintenance</div></div>
-        <div class="stat"><div class="stat-label">Buy: Home Equity</div><div class="stat-value safe" id="bvr-equity">—</div></div>
-        <div class="stat"><div class="stat-label">Rent: Total Cost</div><div class="stat-value danger" id="bvr-rentCost">—</div></div>
-        <div class="stat"><div class="stat-label">Rent: Investment Value</div><div class="stat-value safe" id="bvr-investVal">—</div></div>
-      </div>
-      <hr class="divider"/>
-      <div id="bvr-verdictBox" class="verdict-box tied">
-        <div class="vb-label" id="bvr-vbLabel">Calculating…</div>
-        <div class="vb-title" id="bvr-vbTitle">—</div>
-        <div class="vb-body" id="bvr-vbBody"></div>
-      </div>
-    </div>
-    <p class="footnote">Buying costs include: mortgage interest, property tax (1.2%), maintenance (1%), insurance (0.5%), closing costs (3%). Excludes local tax deductions.</p>
-  </div>
-
-  <!-- ══ SCREEN 4: SAVINGS GOAL ══ -->
-  <div class="screen" id="screen-sav">
-    <header>
-      <div class="eyebrow">Savings Planner</div>
-      <h1>When will you<br/><em>reach your goal?</em></h1>
-      <p class="subtitle">Set a target, enter what you can save monthly, and see exactly how long it takes — with compound interest working for you.</p>
-    </header>
-    <div class="grid">
-      <div class="card">
-        <div class="card-title">Your Plan</div>
-        <div class="field">
-          <label>Savings Goal</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-goal" value="50000" min="1000" max="10000000" step="1000"/></div>
-          <div class="slider-wrap"><input type="range" id="sav-goalSlider" min="1000" max="500000" step="1000" value="50000"/><div class="slider-labels"><span>$1K</span><span>$500K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Starting Balance</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-start" value="5000" min="0" max="1000000" step="500"/></div>
-          <div class="slider-wrap"><input type="range" id="sav-startSlider" min="0" max="100000" step="500" value="5000"/><div class="slider-labels"><span>$0</span><span>$100K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Monthly Contribution</label>
-          <div class="field-row"><span class="field-prefix">$</span><input type="number" id="sav-monthly" value="500" min="10" max="50000" step="50"/></div>
-          <div class="slider-wrap"><input type="range" id="sav-monthlySlider" min="10" max="5000" step="50" value="500"/><div class="slider-labels"><span>$10</span><span>$5K</span></div></div>
-        </div>
-        <div class="field">
-          <label>Annual Return / Interest Rate</label>
-          <div class="field-row"><input type="number" id="sav-rate" value="5" min="0" max="20" step="0.5" style="padding-left:14px"/><span class="field-suffix">%</span></div>
-          <div class="slider-wrap"><input type="range" id="sav-rateSlider" min="0" max="20" step="0.5" value="5"/><div class="slider-labels"><span>0%</span><span>20%</span></div></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Balance Growth</div>
-        <div class="chart-wrap"><canvas id="savChart"></canvas></div>
-      </div>
-    </div>
-    <div class="results-card">
-      <div class="card-title">Your Results</div>
-      <div class="results-grid cols-4" style="margin-bottom:24px">
-        <div class="stat"><div class="stat-label">Time to Goal</div><div class="stat-value highlight" id="sav-time">—</div></div>
-        <div class="stat"><div class="stat-label">Total Contributed</div><div class="stat-value" id="sav-contributed">—</div></div>
-        <div class="stat"><div class="stat-label">Interest Earned</div><div class="stat-value safe" id="sav-interest">—</div></div>
-        <div class="stat"><div class="stat-label">Interest is</div><div class="stat-value highlight" id="sav-interestPct">—</div><div class="stat-sub">of your total goal</div></div>
-      </div>
-      <hr class="divider"/>
-      <div class="card-title" style="margin-bottom:16px">Milestones</div>
-      <div id="sav-milestones"></div>
-    </div>
-    <p class="footnote">Assumes monthly compounding. Does not account for taxes on returns.</p>
-  </div>
-
-  <!-- ══ SCREEN 5: TAX CALCULATOR ══ -->
-  <div class="screen" id="screen-tax">
-    <header>
-      <div class="eyebrow">Take-Home Pay</div>
-      <h1>How much do you <em>actually</em><br/>keep?</h1>
-      <p class="subtitle">Enter your gross salary and see your real after-tax income — for Israel or the United States.</p>
-    </header>
-    <div class="grid">
-      <div class="card">
-        <div class="card-title">Salary Details</div>
-        <div class="field">
-          <label>Country</label>
-          <div class="field-row select-row">
-            <select id="tax-country">
-              <option value="usa">United States</option>
-              <option value="isr">Israel</option>
-            </select>
+          <label>Spouse Gross Annual Salary</label>
+          <div class="field-row">
+            <span class="field-prefix" id="spouseCurrencySymbol">£</span>
+            <input type="number" id="spouseSalary" value="0" min="0" step="1000" placeholder="0 if not working"/>
           </div>
         </div>
-        <div class="field">
-          <label id="tax-status-label">Filing Status</label>
-          <div class="field-row select-row">
-            <select id="tax-status">
-              <option value="single">Single</option>
-              <option value="married">Married</option>
-            </select>
+        <div class="field" style="display:flex;align-items:flex-end;padding-bottom:2px">
+          <div>
+            <label style="margin-bottom:10px;display:block">File taxes jointly?</label>
+            <label class="toggle-row" style="margin-bottom:0;cursor:pointer">
+              <span class="toggle-switch">
+                <input type="checkbox" id="jointTax" checked/>
+                <span class="toggle-slider"></span>
+              </span>
+              <span class="toggle-label" id="jointTaxLabel">Yes — file jointly</span>
+            </label>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Child support section (shows when divorced) -->
+    <div class="spouse-section" id="childSupportSection">
+      <div class="fields-row cols-2">
         <div class="field">
-          <label>Gross Annual Salary</label>
-          <div class="field-row"><span class="field-prefix" id="tax-symbol">$</span><input type="number" id="tax-salary" value="80000" min="0" step="1000"/></div>
-          <div class="slider-wrap"><input type="range" id="tax-salarySlider" min="0" max="500000" step="1000" value="80000"/><div class="slider-labels"><span id="tax-sl-min">$0</span><span id="tax-sl-max">$500K</span></div></div>
+          <label>Annual Child Support Payments</label>
+          <div class="field-row">
+            <span class="field-prefix" id="csCurrencySymbol">£</span>
+            <input type="number" id="childSupport" value="0" min="0" step="500" placeholder="Amount you pay per year"/>
+          </div>
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <p style="font-size:12px;color:var(--text-dim);line-height:1.5;padding-bottom:4px">Child support is typically paid from after-tax income and reduces your available surplus.</p>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Tax Breakdown</div>
-        <div id="tax-breakdown"></div>
-      </div>
     </div>
-    <div class="results-card">
-      <div class="card-title">Take-Home Summary</div>
-      <div class="results-grid cols-4">
-        <div class="stat"><div class="stat-label">Net Annual</div><div class="stat-value highlight" id="tax-net-annual">—</div></div>
-        <div class="stat"><div class="stat-label">Net Monthly</div><div class="stat-value highlight" id="tax-net-monthly">—</div></div>
-        <div class="stat"><div class="stat-label">Effective Tax Rate</div><div class="stat-value danger" id="tax-eff-rate">—</div></div>
-        <div class="stat"><div class="stat-label">Total Deducted</div><div class="stat-value" id="tax-total-ded">—</div></div>
-      </div>
-      <hr class="divider"/>
-      <div class="pain-wrap">
-        <div class="pain-label-row"><span class="pain-title">Tax Burden</span><span class="pain-pct" id="tax-pain-pct">0%</span></div>
-        <div class="pain-bar-bg"><div class="pain-bar-fill" id="tax-pain-bar" style="width:0%"></div></div>
-        <p class="verdict" id="tax-verdict"></p>
-      </div>
-    </div>
-    <p class="footnote">Estimates only. USA: 2024 federal brackets, standard deduction, FICA — excludes state income tax. Israel: 2024 tax brackets, standard credit points, National Insurance &amp; Health tax — excludes employer contributions.</p>
+
   </div>
 
+  <button class="calc-btn" onclick="calculate()">Calculate Family Affordability →</button>
+
+  <!-- RESULTS -->
+  <div class="results" id="results" style="margin-top:32px">
+
+    <div class="verdict-banner" id="verdictBanner">
+      <div class="verdict-emoji" id="verdictEmoji">✅</div>
+      <div class="verdict-text">
+        <div class="verdict-label" id="verdictLabel"></div>
+        <div class="verdict-title" id="verdictTitle"></div>
+        <div class="verdict-sub" id="verdictSub"></div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="city-toggle">
+      <button class="city-btn active" id="btnCity" onclick="toggleCity('city')">🏙 City Center</button>
+      <button class="city-btn" id="btnSuburb" onclick="toggleCity('suburb')">🏡 Outside Center</button>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-card">
+        <div class="detail-title" id="taxTitle">Tax Breakdown</div>
+        <div id="taxRows"></div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-title">Monthly Cost of Living</div>
+        <div id="colRows"></div>
+        <div id="csCallout"></div>
+      </div>
+    </div>
+
+    <div class="surplus-section">
+      <div class="surplus-title">How far does your household income go?</div>
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span>Cost of Living</span><span id="colPct"></span></div>
+        <div class="bar-bg"><div class="bar-fill" id="colBar" style="width:0%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span>Taxes</span><span id="taxBarPct"></span></div>
+        <div class="bar-bg"><div class="bar-fill amber" id="taxBar" style="width:0%"></div></div>
+      </div>
+      <div class="bar-wrap" id="csBar" style="display:none">
+        <div class="bar-label-row"><span>Child Support</span><span id="csPct"></span></div>
+        <div class="bar-bg"><div class="bar-fill red" id="csBarFill" style="width:0%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label-row"><span>Surplus / Savings</span><span id="surplusPct"></span></div>
+        <div class="bar-bg"><div class="bar-fill green" id="surplusBar" style="width:0%"></div></div>
+      </div>
+      <p class="surplus-note" id="surplusNote"></p>
+    </div>
+
+    <p class="footnote" id="dataFootnote"></p>
+  </div>
 </div>
 
 <script>
-  const $ = id => document.getElementById(id);
-  const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString();
+// ══════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════
+let maritalStatus = 'single';
+let numKids = 0;
+let cityType = 'city';
 
-  // ── NAV ──────────────────────────────────────────────────────────────────
-  document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      tab.classList.add('active');
-      $('screen-' + tab.dataset.screen).classList.add('active');
-    });
-  });
+const $= id => document.getElementById(id);
 
-  // ── SLIDER SYNC ───────────────────────────────────────────────────────────
-  function sync(inp, sl, fn) {
-    $(inp).addEventListener('input', () => { $(sl).value = $(inp).value; fn(); });
-    $(sl).addEventListener('input',  () => { $(inp).value = $(sl).value; fn(); });
-  }
+// ══════════════════════════════════════════════════════════════════════════
+// TAX DATA — 2024
+// ══════════════════════════════════════════════════════════════════════════
+const COUNTRIES = {
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // 1. LOAN
-  // ══════════════════════════════════════════════════════════════════════════
-  const loanChart = new Chart($('loanChart').getContext('2d'), {
-    type: 'bar',
-    data: { labels: [], datasets: [
-      { label: 'Principal Paid', data: [], backgroundColor: 'rgba(201,168,76,0.6)', borderColor: 'rgba(201,168,76,1)', borderWidth: 1, borderRadius: 3 },
-      { label: 'Interest Paid',  data: [], backgroundColor: 'rgba(192,57,43,0.5)',  borderColor: 'rgba(192,57,43,0.8)', borderWidth: 1, borderRadius: 3 }
-    ]},
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-      plugins: {
-        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
+  uk: {
+    name:'United Kingdom', currency:'£',
+    regions:['England / Wales','Scotland'],
+    calcTax:(gross, region, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      // UK does NOT have joint filing — each person taxed individually
+      // Marriage allowance: transfer £1,260 of personal allowance if one earns < £12,570
+      // Child Benefit: £25.60/week first child, £16.95 each additional (2024)
+      // Tax-free childcare: up to £2,000/child/year credit
+
+      const calcPersonTax = (g, scottish) => {
+        const PA = 12570;
+        let it = 0;
+        if(!scottish){
+          if(g > PA){ it += (Math.min(g,50270)-PA)*0.20; }
+          if(g > 50270){ it += (Math.min(g,125140)-50270)*0.40; }
+          if(g > 125140){ it += (g-125140)*0.45; }
+        } else {
+          const bands=[[14876,0.19],[26561,0.20],[43662,0.21],[75000,0.42],[125140,0.45],[Infinity,0.48]];
+          let p=PA; for(const[top,r]of bands){if(g<=p)break;it+=(Math.min(g,top)-p)*r;p=top;}
+        }
+        const ni = (g>12570?Math.min(g,50270-12570)*0.08:0)+(g>50270?(g-50270)*0.02:0);
+        return {it, ni};
+      };
+
+      const scottish = region==='Scotland';
+      const {it:myIT, ni:myNI} = calcPersonTax(gross, scottish);
+
+      // Marriage allowance: if married and spouse earns < PA, transfer £1,260
+      let marriageBonus = 0;
+      if(marital==='married' && spouseGross < 12570) {
+        marriageBonus = 1260 * 0.20; // saves £252/year
+      }
+
+      const incomeTax = Math.max(0, myIT - marriageBonus);
+
+      // Child benefit (taxable if >£60k — High Income Child Benefit Charge)
+      let childBenefit = 0;
+      if(kids > 0){
+        childBenefit = (25.60 * 52) + Math.max(0, kids-1) * (16.95 * 52);
+        if(gross > 80000) childBenefit = 0; // fully clawed back above £80k
+        else if(gross > 60000) childBenefit *= (1 - (gross-60000)/20000);
+      }
+
+      const totalTax = incomeTax + myNI;
+      const netAnnual = gross - totalTax;
+
+      rows.push({label:'Personal Allowance', value:-12570, note:'tax-free'});
+      if(marriageBonus>0) rows.push({label:'Marriage Allowance Saving', value:-marriageBonus, note:'benefit'});
+      rows.push({label:'Income Tax', value:incomeTax});
+      rows.push({label:'National Insurance', value:myNI});
+      if(childBenefit>0) rows.push({label:`Child Benefit (${kids} child${kids>1?'ren':''})`, value:-childBenefit, note:'annual benefit received'});
+
+      // Spouse
+      let spouseNet = 0, spouseTotalTax = 0;
+      if(marital==='married' && spouseGross > 0){
+        const {it:sIT,ni:sNI} = calcPersonTax(spouseGross, scottish);
+        spouseTotalTax = sIT + sNI;
+        spouseNet = spouseGross - spouseTotalTax;
+        rows.push({label:'Spouse Income Tax', value:sIT, note:'spouse'});
+        rows.push({label:'Spouse NI', value:sNI, note:'spouse'});
+      }
+
+      return {
+        rows, totalTax: totalTax + spouseTotalTax,
+        netAnnual: netAnnual + spouseNet - (childBenefit > 0 ? -childBenefit : 0),
+        myNet: netAnnual, spouseNet,
+        benefits: childBenefit,
+        note:'UK: each person taxed individually. Marriage allowance applies where one earns below personal allowance.'
+      };
+    },
+    col:{
+      'England / Wales':{
+        city:  {rent:1850,groceries:400,transport:180,utilities:160,dining:250,other:200},
+        suburb:{rent:1200,groceries:370,transport:200,utilities:150,dining:180,other:180}
       },
-      scales: {
-        x: { stacked: true, ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 } }, grid: { color: '#2e2c29' } },
-        y: { stacked: true, ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      'Scotland':{
+        city:  {rent:1300,groceries:380,transport:160,utilities:150,dining:200,other:180},
+        suburb:{rent:900, groceries:350,transport:180,utilities:140,dining:150,other:160}
       }
-    }
-  });
+    },
+    kidsColAdder:(kids)=>({ groceries:kids*120, other:kids*200, transport:kids*50 })
+  },
 
-  function calcLoan() {
-    const P = parseFloat($('l-principal').value)||0;
-    const r = (parseFloat($('l-rate').value)||0)/100/12;
-    const years = parseInt($('l-years').value)||1;
-    const n = years*12;
-    const monthly = r===0 ? P/n : P*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
-    const totalPaid = monthly*n, totalInterest = totalPaid-P;
-    const iPct = (totalInterest/P)*100;
-    $('l-monthly').textContent       = fmt(monthly);
-    $('l-totalInterest').textContent  = fmt(totalInterest);
-    $('l-totalPaid').textContent      = fmt(totalPaid);
-    $('l-interestPct').textContent    = `+${iPct.toFixed(1)}% of principal`;
-    $('l-painBar').style.width        = Math.min(iPct,100)+'%';
-    $('l-painPct').textContent        = iPct.toFixed(1)+'%';
-    const v=[[10,"Very low interest cost. This is an efficient loan."],[25,"Reasonable cost. You're paying a moderate premium for borrowing."],[60,"Significant interest. Consider paying extra monthly to reduce total cost."],[100,"High cost of borrowing. Every extra payment saves you disproportionately."],[Infinity,"⚠️ You're paying more in interest than the loan itself. Refinancing is worth exploring."]];
-    $('l-verdict').textContent = v.find(([t])=>iPct<t)[1];
-    let bal=P, labels=[], pData=[], iData=[];
-    for(let y=1;y<=years;y++){
-      let yP=0,yI=0;
-      for(let m=0;m<12;m++){const ip=bal*r,pp=monthly-ip;yI+=ip;yP+=pp;bal=Math.max(0,bal-pp);}
-      labels.push('Yr '+y); pData.push(yP.toFixed(2)); iData.push(yI.toFixed(2));
-    }
-    loanChart.data.labels=labels; loanChart.data.datasets[0].data=pData; loanChart.data.datasets[1].data=iData; loanChart.update();
-  }
+  usa: {
+    name:'United States', currency:'$',
+    regions:['California','New York','Texas','Florida','Illinois','Washington'],
+    calcTax:(gross, state, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      const isJoint = (marital==='married') && jointFiling;
+      const totalIncome = isJoint ? gross + spouseGross : gross;
 
-  sync('l-principal','l-principalSlider',calcLoan);
-  sync('l-rate','l-rateSlider',calcLoan);
-  sync('l-years','l-yearsSlider',calcLoan);
+      // Standard deduction 2024
+      const stdDed = isJoint ? 29200 : 14600;
+      const taxable = Math.max(0, totalIncome - stdDed);
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // 2. CREDIT CARD — fully rebuilt with correct chart logic
-  // ══════════════════════════════════════════════════════════════════════════
+      // Federal brackets 2024
+      const fedBrackets = isJoint
+        ? [[23200,0.10],[94300,0.12],[201050,0.22],[383900,0.24],[487450,0.32],[731200,0.35],[Infinity,0.37]]
+        : [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[609350,0.35],[Infinity,0.37]];
 
+      let federal=0, prev=0;
+      for(const[top,r]of fedBrackets){if(taxable<=prev)break;federal+=(Math.min(taxable,top)-prev)*r;prev=top;}
 
-  // Simulate minimum payment (recalculates 2% each month — realistic)
-  function simulateMin(balance, apr) {
-    const mr = apr/100/12;
-    let bal = balance, totalInterest = 0, months = 0;
-    const balances = [bal];
-    while(bal > 0.01 && months < 600) {
-      const interest = bal * mr;
-      const payment = Math.max(25, bal * 0.02);
-      if(payment <= interest) break; // can't pay off
-      totalInterest += interest;
-      bal = Math.max(0, bal - (payment - interest));
-      months++;
-      balances.push(bal);
-    }
-    return { months, totalInterest, totalPaid: balance + totalInterest, balances };
-  }
+      // Child Tax Credit: $2,000/child (phases out above $400k joint / $200k single)
+      const ctcLimit = isJoint ? 400000 : 200000;
+      const ctc = kids > 0 && totalIncome < ctcLimit ? Math.min(kids * 2000, federal) : 0;
+      const federalAfterCTC = Math.max(0, federal - ctc);
 
-  // Simulate fixed payment
-  function simulateFixed(balance, apr, payment) {
-    const mr = apr/100/12;
-    let bal = balance, totalInterest = 0, months = 0;
-    const balances = [bal];
-    const monthlyInterest = bal * mr;
-    if(payment <= monthlyInterest) return null; // payment can't cover interest
-    while(bal > 0.01 && months < 600) {
-      const interest = bal * mr;
-      if(payment <= interest) break;
-      totalInterest += interest;
-      bal = Math.max(0, bal - (payment - interest));
-      months++;
-      balances.push(bal);
-    }
-    return { months, totalInterest, totalPaid: balance + totalInterest, balances };
-  }
+      // FICA — each earner pays on own income
+      const ficaCalc = (g) => {
+        const ss = Math.min(g, 168600) * 0.062;
+        const med = g*0.0145 + (g>200000?(g-200000)*0.009:0);
+        return ss + med;
+      };
+      const myFICA = ficaCalc(gross);
+      const spouseFICA = (isJoint && spouseGross>0) ? ficaCalc(spouseGross) : 0;
 
-  function calcCC() {
-    const balance = parseFloat($('cc-balance').value)||0;
-    const apr     = parseFloat($('cc-apr').value)||0;
+      // State tax
+      const stateFns = {
+        'California': (g)=>{const b=[[10412,0.01],[24684,0.02],[38959,0.04],[54081,0.06],[68350,0.08],[349137,0.093],[418961,0.103],[698274,0.113],[Infinity,0.123]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+        'New York':   (g)=>{const b=[[17150,0.04],[23600,0.045],[27900,0.0525],[161550,0.0585],[323200,0.0625],[2155350,0.0685],[Infinity,0.0882]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+        'Texas':      ()=>0,'Florida':()=>0,
+        'Illinois':   (g)=>g*0.0495,
+        'Washington': ()=>0,
+      };
+      const stateTax = stateFns[state] ? stateFns[state](isJoint ? totalIncome : gross) : 0;
+      const spouseStateTax = (!isJoint && marital==='married' && spouseGross>0 && stateFns[state]) ? stateFns[state](spouseGross) : 0;
 
-    // Calculate minimum payment and update UI
-    const minPayment = Math.max(25, Math.round(balance * 0.02));
-    $('cc-minPayment').textContent = fmt(minPayment);
-    $('cc-minHint').textContent    = 'min: $' + minPayment;
-    $('cc-sliderMinLabel').textContent = '$' + minPayment + ' min';
+      const totalTax = federalAfterCTC + myFICA + spouseFICA + stateTax + spouseStateTax;
+      const netAnnual = totalIncome - totalTax;
 
-    // Clamp slider & input to minimum
-    $('cc-paymentSlider').min = minPayment;
-    $('cc-payment').min = minPayment;
-    let payment = parseFloat($('cc-payment').value)||0;
-    if(payment < minPayment) {
-      payment = minPayment;
-      $('cc-payment').value = minPayment;
-      $('cc-paymentSlider').value = minPayment;
-    }
+      rows.push({label:'Standard Deduction', value:-stdDed, note: isJoint?'joint':'single'});
+      rows.push({label:'Federal Income Tax', value:federal});
+      if(ctc>0) rows.push({label:`Child Tax Credit (${kids} child${kids>1?'ren':''})`, value:-ctc, note:'$2,000/child'});
+      rows.push({label:'FICA (Social Security + Medicare)', value:myFICA+(spouseFICA>0?spouseFICA:0)});
+      rows.push({label:`${state} State Tax`, value:stateTax+(spouseStateTax||0), note:stateTax===0?'no state income tax':''});
 
-    const resMin = simulateMin(balance, apr);
-    const resPay = simulateFixed(balance, apr, payment);
+      return {
+        rows, totalTax,
+        netAnnual,
+        myNet: gross - (federalAfterCTC*(gross/totalIncome)) - myFICA - (stateTax*(gross/totalIncome)),
+        spouseNet: isJoint && spouseGross>0 ? spouseGross - (federalAfterCTC*(spouseGross/totalIncome)) - spouseFICA - (stateTax*(spouseGross/totalIncome)) : 0,
+        benefits: ctc,
+        note: isJoint ? 'Filing jointly — combined income used for all calculations.' : 'Filing separately.'
+      };
+    },
+    col:{
+      'California': {city:{rent:2800,groceries:550,transport:150,utilities:180,dining:400,other:300},suburb:{rent:2000,groceries:500,transport:250,utilities:160,dining:300,other:250}},
+      'New York':   {city:{rent:3500,groceries:600,transport:130,utilities:200,dining:500,other:350},suburb:{rent:2200,groceries:520,transport:300,utilities:180,dining:350,other:280}},
+      'Texas':      {city:{rent:1700,groceries:480,transport:200,utilities:170,dining:320,other:250},suburb:{rent:1300,groceries:440,transport:280,utilities:150,dining:250,other:200}},
+      'Florida':    {city:{rent:2000,groceries:490,transport:180,utilities:180,dining:350,other:260},suburb:{rent:1500,groceries:450,transport:250,utilities:160,dining:270,other:210}},
+      'Illinois':   {city:{rent:1900,groceries:480,transport:120,utilities:160,dining:320,other:240},suburb:{rent:1400,groceries:440,transport:200,utilities:150,dining:250,other:200}},
+      'Washington': {city:{rent:2200,groceries:510,transport:130,utilities:170,dining:370,other:270},suburb:{rent:1700,groceries:470,transport:220,utilities:155,dining:280,other:230}},
+    },
+    kidsColAdder:(kids)=>({groceries:kids*150,other:kids*250,transport:kids*50})
+  },
 
-    // ── Case: payment too low to cover interest (debt spiral) ──
-    if(!resPay) {
-      $('cc-months').textContent    = '∞';
-      $('cc-interest').textContent  = '∞';
-      $('cc-total').textContent     = '∞';
-      $('cc-monthsSub').textContent = 'debt is growing';
-      const monthlyInt = Math.round(balance*(apr/100/12));
-      $('cc-verdict').textContent   = `⚠️ Monthly interest is $${monthlyInt.toLocaleString()} but your payment is only $${payment.toLocaleString()}. Your balance grows every month!`;
-      $('cc-painBar').style.width   = '100%';
-      $('cc-painPct').textContent   = '∞ — growing';
-      // Show 5-year spiral going UP
-      const mr = apr/100/12;
-      let bal = balance;
-      const spiralLabels = ['Now'], spiralData = [bal];
-      for(let m=1; m<=60; m++) {
-        bal = bal*(1+mr) - payment;
-        if(m % 6 === 0) { spiralLabels.push('Mo '+m); spiralData.push(Math.round(bal)); }
+  canada: {
+    name:'Canada', currency:'C$',
+    regions:['Ontario','British Columbia','Quebec','Alberta'],
+    calcTax:(gross, province, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      // Canada: spouses taxed individually but spousal amount credit applies
+      const BPA = 15705;
+
+      const calcFederal = (g) => {
+        const taxable = Math.max(0, g-BPA);
+        const b=[[55867,0.15],[111733,0.205],[154906,0.26],[220000,0.29],[Infinity,0.33]];
+        let t=0,p=0; for(const[top,r]of b){if(taxable<=p)break;t+=(Math.min(taxable,top)-p)*r;p=top;} return t;
+      };
+      const calcProv = (g, prov) => {
+        const provFns = {
+          'Ontario':           (g)=>{const b=[[51446,0.0505],[102894,0.0915],[150000,0.1116],[220000,0.1216],[Infinity,0.1316]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+          'British Columbia':  (g)=>{const b=[[45654,0.0506],[91310,0.077],[104835,0.105],[127299,0.1229],[172602,0.147],[240716,0.168],[Infinity,0.205]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+          'Quebec':            (g)=>{const b=[[51780,0.14],[103545,0.19],[126000,0.24],[Infinity,0.2575]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+          'Alberta':           (g)=>{const b=[[148269,0.10],[177922,0.12],[237230,0.13],[355845,0.14],[Infinity,0.15]];let t=0,p=0;for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;}return t;},
+        };
+        return provFns[prov] ? provFns[prov](g) : 0;
+      };
+
+      const cpp = (g) => Math.min(Math.max(0,g-3500),68500-3500)*0.0595;
+      const ei  = (g) => Math.min(g,63200)*0.0166;
+
+      let myFed = calcFederal(gross);
+      const myProv = calcProv(gross, province);
+      const myCPP = cpp(gross), myEI = ei(gross);
+
+      // Spousal amount credit: if married and spouse earns < BPA, get credit on difference
+      let spousalCredit = 0;
+      if(marital==='married' && spouseGross < BPA){
+        spousalCredit = (BPA - spouseGross) * 0.15; // federal credit at 15%
+        myFed = Math.max(0, myFed - spousalCredit);
       }
-      return;
-    }
 
-    // ── Normal case ──
-    const yrs = (resPay.months/12).toFixed(1);
-    $('cc-months').textContent    = resPay.months;
-    $('cc-monthsSub').textContent = yrs + ' years';
-    $('cc-interest').textContent  = fmt(resPay.totalInterest);
-    $('cc-total').textContent     = fmt(resPay.totalPaid);
-
-    // Comparison table
-    $('cc-cmp-minMonths').textContent    = `${resMin.months} mo (${(resMin.months/12).toFixed(1)} yrs)`;
-    $('cc-cmp-payMonths').textContent    = `${resPay.months} mo (${yrs} yrs)`;
-    $('cc-cmp-saveMonths').textContent   = `${resMin.months - resPay.months} months faster`;
-    $('cc-cmp-minInterest').textContent  = fmt(resMin.totalInterest);
-    $('cc-cmp-payInterest').textContent  = fmt(resPay.totalInterest);
-    $('cc-cmp-saveInterest').textContent = fmt(resMin.totalInterest - resPay.totalInterest);
-    $('cc-cmp-minTotal').textContent     = fmt(resMin.totalPaid);
-    $('cc-cmp-payTotal').textContent     = fmt(resPay.totalPaid);
-    $('cc-cmp-saveTotal').textContent    = fmt(resMin.totalPaid - resPay.totalPaid);
-
-    // Pain meter
-    const iPct = (resPay.totalInterest/balance)*100;
-    $('cc-painBar').style.width = Math.min(iPct,100)+'%';
-    $('cc-painPct').textContent = iPct.toFixed(1)+'% interest overhead';
-    const v=[[15,"Excellent. You're crushing this debt efficiently."],[35,"Manageable. Even $50 extra/month makes a big difference."],[75,"Costly. The bank is making real money on you here."],[150,"Painful. You'll pay back far more than you borrowed. Attack this aggressively."],[Infinity,"⚠️ This is a serious financial burden. Every extra dollar you pay saves you disproportionately."]];
-    $('cc-verdict').textContent = v.find(([t])=>iPct<t)[1];
-
-    // ── Chart — KEY FIX ──
-    // X-axis uses the LONGER timeline (minimum payment takes longest)
-    // Gold line ends at payoff with nulls after — so it doesn't drag along the bottom
-    // Red line runs its full slow journey
-    const maxLen = Math.max(resMin.balances.length, resPay.balances.length);
-    const labels = Array.from({length: maxLen}, (_, i) => i === 0 ? 'Now' : `Mo ${i}`);
-
-    // Pad gold line with nulls (not zeros!) after it hits $0
-    const goldData = [...resPay.balances];
-    while(goldData.length < maxLen) goldData.push(null);
-  }
-
-  // Balance syncs also trigger min payment recalc
-  $('cc-balance').addEventListener('input', () => { $('cc-balanceSlider').value = $('cc-balance').value; calcCC(); });
-  $('cc-balanceSlider').addEventListener('input', () => { $('cc-balance').value = $('cc-balanceSlider').value; calcCC(); });
-  sync('cc-apr','cc-aprSlider',calcCC);
-  sync('cc-payment','cc-paymentSlider',calcCC);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 3. BUY VS RENT
-  // ══════════════════════════════════════════════════════════════════════════
-  const bvrChart = new Chart($('bvrChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: [], datasets: [
-      { label: 'Buy (net cost)',  data: [], borderColor: '#e07060', backgroundColor: 'rgba(224,112,96,0.07)', tension: 0.3, borderWidth: 2, pointRadius: 0 },
-      { label: 'Rent (net cost)', data: [], borderColor: '#c9a84c', backgroundColor: 'rgba(201,168,76,0.07)', tension: 0.3, borderWidth: 2, pointRadius: 0 }
-    ]},
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-      plugins: {
-        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
-      },
-      scales: {
-        x: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#2e2c29' } },
-        y: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      // Canada Child Benefit (CCB) 2024 — based on family net income
+      const familyNet = gross + (marital==='married'?spouseGross:0);
+      let ccb = 0;
+      if(kids > 0){
+        // Base: $7,437/year first child under 6, $6,275 age 6-17
+        // Simplified: use $6,275/child reduced by income
+        const basePerChild = 6275;
+        const ccbGross = basePerChild * kids;
+        // Reduction: starts at $34,863 family income
+        if(familyNet < 34863) ccb = ccbGross;
+        else if(familyNet < 75537) ccb = Math.max(0, ccbGross - (familyNet-34863)*(kids===1?0.132:kids===2?0.228:0.324));
+        else ccb = Math.max(0, ccbGross * 0.25);
       }
-    }
-  });
 
-  function calcBvR() {
-    const price      = parseFloat($('bvr-price').value)||0;
-    const downPct    = (parseFloat($('bvr-down').value)||0)/100;
-    const mortRate   = (parseFloat($('bvr-rate').value)||0)/100/12;
-    const apprRate   = (parseFloat($('bvr-appr').value)||0)/100;
-    const rent0      = parseFloat($('bvr-rent').value)||0;
-    const rentInc    = (parseFloat($('bvr-rentInc').value)||0)/100;
-    const investRate = (parseFloat($('bvr-invest').value)||0)/100/12;
-    const years      = parseInt($('bvr-years').value)||1;
-    $('bvr-yearsLabel').textContent = years;
-    const downAmt = price*downPct, loanAmt = price-downAmt;
-    const n = 30*12;
-    const monthly = mortRate===0 ? loanAmt/n : loanAmt*(mortRate*Math.pow(1+mortRate,n))/(Math.pow(1+mortRate,n)-1);
-    const buyNetArr=[], rentNetArr=[];
-    let buyTotalCost=0, rentTotalCost=0, bal=loanAmt, homeVal=price, rent=rent0, investVal=downAmt;
-    buyTotalCost += price*0.03;
-    for(let y=1;y<=years;y++){
-      let yearInterest=0;
-      for(let m=0;m<12;m++){const ip=bal*mortRate,pp=monthly-ip;yearInterest+=ip;bal=Math.max(0,bal-pp);}
-      buyTotalCost += yearInterest + homeVal*0.012 + homeVal*0.01 + homeVal*0.005;
-      homeVal *= (1+apprRate);
-      rentTotalCost += rent*12;
-      rent *= (1+rentInc);
-      for(let m=0;m<12;m++) investVal *= (1+investRate);
-      buyNetArr.push(buyTotalCost);
-      rentNetArr.push(rentTotalCost);
-    }
-    const equity = homeVal - bal;
-    $('bvr-buyCost').textContent   = fmt(buyTotalCost);
-    $('bvr-equity').textContent    = fmt(equity);
-    $('bvr-rentCost').textContent  = fmt(rentTotalCost);
-    $('bvr-investVal').textContent = fmt(investVal);
-    const buyNet = buyTotalCost-equity, rentNet = rentTotalCost-(investVal-downAmt);
-    const box = $('bvr-verdictBox');
-    box.className = 'verdict-box';
-    const diff = Math.abs(buyNet-rentNet);
-    if(buyNet<rentNet){
-      box.classList.add('buy');
-      $('bvr-vbLabel').textContent = '🏠 Buying wins';
-      $('bvr-vbTitle').textContent = `You're ${fmt(diff)} better off buying`;
-      $('bvr-vbBody').textContent  = `Over ${years} years, buying builds ${fmt(equity)} in equity. The higher upfront and ongoing costs are outweighed by appreciation and principal paydown.`;
-    } else if(rentNet<buyNet){
-      box.classList.add('rent');
-      $('bvr-vbLabel').textContent = '🏢 Renting wins';
-      $('bvr-vbTitle').textContent = `You're ${fmt(diff)} better off renting`;
-      $('bvr-vbBody').textContent  = `Over ${years} years, renting keeps costs lower and your invested down payment grows to ${fmt(investVal)}. Try increasing your time horizon to see when buying becomes better.`;
-    } else {
-      box.classList.add('tied');
-      $('bvr-vbLabel').textContent = '⚖️ It\'s a tie';
-      $('bvr-vbTitle').textContent = 'Roughly break-even';
-      $('bvr-vbBody').textContent  = 'Both options have a similar net outcome. Your lifestyle preference and flexibility needs should drive the decision.';
-    }
-    const labels = Array.from({length:years},(_,i)=>'Yr '+(i+1));
-    bvrChart.data.labels=labels; bvrChart.data.datasets[0].data=buyNetArr; bvrChart.data.datasets[1].data=rentNetArr; bvrChart.update();
-  }
+      const myTotalTax = myFed + myProv + myCPP + myEI;
+      const myNet = gross - myTotalTax;
 
-  sync('bvr-price','bvr-priceSlider',calcBvR);
-  sync('bvr-down','bvr-downSlider',calcBvR);
-  sync('bvr-rate','bvr-rateSlider',calcBvR);
-  sync('bvr-appr','bvr-apprSlider',calcBvR);
-  sync('bvr-rent','bvr-rentSlider',calcBvR);
-  sync('bvr-rentInc','bvr-rentIncSlider',calcBvR);
-  sync('bvr-invest','bvr-investSlider',calcBvR);
-  sync('bvr-years','bvr-yearsSlider',calcBvR);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 4. SAVINGS GOAL
-  // ══════════════════════════════════════════════════════════════════════════
-  const savChart = new Chart($('savChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: [], datasets: [
-      { label: 'Balance',       data: [], borderColor: '#c9a84c', backgroundColor: 'rgba(201,168,76,0.08)', tension: 0.3, borderWidth: 2, pointRadius: 0, fill: true },
-      { label: 'Contributions', data: [], borderColor: '#7a7670', backgroundColor: 'transparent',           tension: 0.3, borderWidth: 1, pointRadius: 0, borderDash: [4,3] }
-    ]},
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-      plugins: {
-        legend: { labels: { color: '#7a7670', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } }
-      },
-      scales: {
-        x: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#2e2c29' } },
-        y: { ticks: { color: '#7a7670', font: { family: 'DM Mono', size: 9 }, callback: v => '$'+(v>=1000?(v/1000).toFixed(0)+'K':v) }, grid: { color: '#2e2c29' } }
+      let spouseTotalTax = 0, spouseNet = 0;
+      if(marital==='married' && spouseGross > 0){
+        const sFed = calcFederal(spouseGross);
+        const sProv = calcProv(spouseGross, province);
+        const sCPP = cpp(spouseGross), sEI = ei(spouseGross);
+        spouseTotalTax = sFed + sProv + sCPP + sEI;
+        spouseNet = spouseGross - spouseTotalTax;
+        rows.push({label:'Spouse Federal Tax', value:sFed, note:'spouse'});
+        rows.push({label:`Spouse ${province} Tax`, value:sProv, note:'spouse'});
+        rows.push({label:'Spouse CPP + EI', value:sCPP+sEI, note:'spouse'});
       }
-    }
-  });
 
-  function calcSav() {
-    const goal    = parseFloat($('sav-goal').value)||0;
-    const start   = parseFloat($('sav-start').value)||0;
-    const monthly = parseFloat($('sav-monthly').value)||0;
-    const mr      = (parseFloat($('sav-rate').value)||0)/100/12;
-    let bal=start, months=0, totalContrib=start;
-    const balArr=[bal], contribArr=[start], labels=['Now'];
-    const MAX=600;
-    while(bal<goal && months<MAX){
-      bal = bal*(1+mr)+monthly;
-      months++;
-      totalContrib += monthly;
-      if(months%12===0 || bal>=goal){
-        labels.push('Yr '+Math.ceil(months/12));
-        balArr.push(bal);
-        contribArr.push(totalContrib);
+      rows.push({label:'Basic Personal Amount', value:-BPA, note:'tax-free'});
+      if(spousalCredit>0) rows.push({label:'Spousal Amount Credit', value:-spousalCredit, note:'benefit'});
+      rows.push({label:'Federal Income Tax', value:myFed});
+      rows.push({label:`${province} Provincial Tax`, value:myProv});
+      rows.push({label:'CPP + EI', value:myCPP+myEI});
+      if(ccb>0) rows.push({label:`Canada Child Benefit (${kids} child${kids>1?'ren':''})`, value:-ccb, note:'annual, tax-free'});
+
+      return {
+        rows, totalTax: myTotalTax + spouseTotalTax,
+        netAnnual: myNet + spouseNet + ccb,
+        myNet, spouseNet, benefits: ccb,
+        note:'Canada: spouses taxed individually. CCB is non-taxable and substantial.'
+      };
+    },
+    col:{
+      'Ontario':          {city:{rent:2400,groceries:500,transport:156,utilities:180,dining:350,other:250},suburb:{rent:1700,groceries:460,transport:220,utilities:160,dining:270,other:210}},
+      'British Columbia': {city:{rent:2600,groceries:510,transport:100,utilities:170,dining:370,other:260},suburb:{rent:1900,groceries:470,transport:200,utilities:155,dining:290,other:230}},
+      'Quebec':           {city:{rent:1500,groceries:470,transport:97, utilities:160,dining:300,other:220},suburb:{rent:1100,groceries:440,transport:180,utilities:145,dining:230,other:190}},
+      'Alberta':          {city:{rent:1800,groceries:490,transport:120,utilities:175,dining:320,other:240},suburb:{rent:1400,groceries:455,transport:200,utilities:160,dining:260,other:210}},
+    },
+    kidsColAdder:(kids)=>({groceries:kids*130,other:kids*220,transport:kids*50})
+  },
+
+  germany: {
+    name:'Germany', currency:'€',
+    regions:['Bavaria','Berlin','Hamburg','North Rhine-Westphalia'],
+    calcTax:(gross, region, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      // Germany: Steuerklasse III/V for married (splitting)
+      // Ehegattensplitting: add incomes, divide by 2, compute tax, multiply by 2
+
+      const calcGermanIT = (taxable) => {
+        const BA = 11604;
+        if(taxable <= BA) return 0;
+        if(taxable <= 17005){ const y=(taxable-BA)/10000; return (979.18*y+1400)*y; }
+        if(taxable <= 66760){ const y=(taxable-17005)/10000; return (192.59*y+2397)*y+966.53; }
+        if(taxable <= 277825) return taxable*0.42-10636.31;
+        return taxable*0.45-18921.74;
+      };
+
+      let incomeTax, soli;
+      const isMarried = marital === 'married';
+
+      if(isMarried && jointFiling){
+        // Ehegattensplitting
+        const combined = gross + spouseGross;
+        const halfTax = calcGermanIT(combined/2);
+        incomeTax = halfTax * 2;
+        soli = incomeTax > 18130 ? incomeTax * 0.055 : 0;
+        rows.push({label:'Ehegattensplitting (joint)', value:0, note:'splitting method applied'});
+      } else {
+        incomeTax = calcGermanIT(gross);
+        soli = incomeTax > 18130 ? incomeTax * 0.055 : 0;
       }
-    }
-    const interestEarned = bal-totalContrib;
-    const iPct = (interestEarned/goal)*100;
-    if(months>=MAX){ $('sav-time').textContent='50+ yrs'; }
-    else { const yrs=Math.floor(months/12),mos=months%12; $('sav-time').textContent=yrs>0?`${yrs}y ${mos}m`:`${mos} mo`; }
-    $('sav-contributed').textContent = fmt(totalContrib);
-    $('sav-interest').textContent    = fmt(interestEarned);
-    $('sav-interestPct').textContent = iPct.toFixed(1)+'%';
-    savChart.data.labels=labels; savChart.data.datasets[0].data=balArr; savChart.data.datasets[1].data=contribArr; savChart.update();
-    const pcts=[25,50,75,100], icons=['🌱','🌿','🌳','🏆'], el=$('sav-milestones');
-    el.innerHTML='';
-    pcts.forEach((pct,i)=>{
-      const target=goal*(pct/100);
-      let mBal=start,mMonths=0,mContrib=start;
-      while(mBal<target&&mMonths<MAX){mBal=mBal*(1+mr)+monthly;mMonths++;mContrib+=monthly;}
-      const done=start>=target;
-      const yrs=Math.floor(mMonths/12),mos=mMonths%12;
-      const timeStr=mMonths===0?'Already there!':(yrs>0?`${yrs}y ${mos}m`:`${mos} mo`);
-      const row=document.createElement('div');
-      row.className='milestone-row'+(done?' milestone-done':'');
-      row.innerHTML=`<div class="milestone-icon">${icons[i]}</div><div class="milestone-label">${pct}% of goal — ${fmt(target)}</div><div class="milestone-value">${done?'✓ Done':timeStr}</div>`;
-      el.appendChild(row);
-    });
+
+      // Kinderfreibetrag: €6,384 per child (alternative to Kindergeld)
+      // Kindergeld: €250/month per child (€3,000/year) — whichever is better
+      const kindergeld = kids > 0 ? kids * 3000 : 0;
+      const kinderfreibetrag = kids > 0 ? kids * 6384 : 0;
+      // Use Kinderfreibetrag only if it saves more than Kindergeld
+      let childBenefit = kindergeld; // simplified: most people get Kindergeld
+      if(kinderfreibetrag * 0.42 > kindergeld) childBenefit = kinderfreibetrag * 0.42;
+
+      // Social contributions
+      const socialBase = isMarried && jointFiling ? gross + spouseGross : gross;
+      const pension      = Math.min(socialBase, 90600) * 0.093;
+      const health       = Math.min(socialBase, 62100) * 0.0757;
+      const longterm     = Math.min(socialBase, 62100) * (kids > 0 ? 0.016 : 0.018); // reduced with kids
+      const unemployment = Math.min(socialBase, 90600) * 0.013;
+      const social = pension + health + longterm + unemployment;
+
+      const totalTax = incomeTax + soli + social;
+      const totalGross = isMarried && jointFiling ? gross + spouseGross : gross;
+      const netAnnual = totalGross - totalTax + childBenefit;
+
+      rows.push({label:'Basic Allowance', value:-11604, note:'per person'});
+      rows.push({label:'Income Tax', value:incomeTax});
+      rows.push({label:'Solidarity Surcharge', value:soli});
+      rows.push({label:'Pension Insurance (9.3%)', value:pension});
+      rows.push({label:'Health Insurance (7.57%)', value:health});
+      rows.push({label:'Long-term Care', value:longterm});
+      rows.push({label:'Unemployment (1.3%)', value:unemployment});
+      if(childBenefit>0) rows.push({label:`Kindergeld (${kids} child${kids>1?'ren':''})`, value:-childBenefit, note:'€250/mo/child'});
+
+      return {
+        rows, totalTax,
+        netAnnual, myNet:netAnnual, spouseNet:0, benefits:childBenefit,
+        note: isMarried && jointFiling ? 'Ehegattensplitting applied — significant tax saving for couples with unequal incomes.' : 'German tax class I (single/separate).'
+      };
+    },
+    col:{
+      'Bavaria':                  {city:{rent:1700,groceries:400,transport:57, utilities:200,dining:280,other:220},suburb:{rent:1200,groceries:370,transport:120,utilities:180,dining:210,other:180}},
+      'Berlin':                   {city:{rent:1400,groceries:390,transport:86, utilities:190,dining:300,other:230},suburb:{rent:1000,groceries:360,transport:100,utilities:170,dining:230,other:190}},
+      'Hamburg':                  {city:{rent:1600,groceries:400,transport:109,utilities:200,dining:290,other:220},suburb:{rent:1100,groceries:370,transport:130,utilities:180,dining:220,other:185}},
+      'North Rhine-Westphalia':   {city:{rent:1100,groceries:380,transport:100,utilities:190,dining:260,other:200},suburb:{rent:800, groceries:350,transport:130,utilities:170,dining:200,other:170}},
+    },
+    kidsColAdder:(kids)=>({groceries:kids*110,other:kids*180,transport:kids*40})
+  },
+
+  france: {
+    name:'France', currency:'€',
+    regions:['Île-de-France (Paris)','Provence-Alpes (Marseille)','Auvergne-Rhône (Lyon)','Occitanie (Toulouse)'],
+    calcTax:(gross, region, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      // France: Quotient familial system — parts = 2 (married) + 0.5 per child
+      // Capping: benefit per half-part capped at €1,759 (2024)
+
+      const totalIncome = (marital==='married') ? gross + spouseGross : gross;
+      const profDed = Math.min(totalIncome * 0.10, 14171);
+      const taxable = totalIncome - profDed;
+
+      // Calculate parts
+      let parts = 1; // single
+      if(marital==='married') parts = 2;
+      if(marital==='divorced') parts = 1 + (kids > 0 ? 0.5 : 0); // first child = 0.5 extra for single parent
+      parts += Math.max(0, kids - (marital==='divorced' ? 1 : 0)) * 0.5;
+
+      const calcIR = (taxableIncome, nparts) => {
+        const perPart = taxableIncome / nparts;
+        const b=[[11294,0],[28797,0.11],[82341,0.30],[177106,0.41],[Infinity,0.45]];
+        let t=0,p=0; for(const[top,r]of b){if(perPart<=p)break;t+=(Math.min(perPart,top)-p)*r;p=top;}
+        return t * nparts;
+      };
+
+      // Tax with quotient familial
+      const taxWith = calcIR(taxable, parts);
+      const taxWithout = calcIR(taxable, marital==='married'?2:1);
+      // Cap benefit
+      const maxBenefit = kids * 2 * 1759; // 2 half-parts per child × cap
+      const IR = Math.max(taxWith, taxWithout - maxBenefit);
+
+      // Social contributions
+      const csg_crds      = totalIncome * 0.098;
+      const pension       = totalIncome * 0.069;
+      const pension_comp  = totalIncome * 0.038;
+      const unemployment  = totalIncome * 0.024;
+      const prevoyance    = totalIncome * 0.009;
+      const social = csg_crds + pension + pension_comp + unemployment + prevoyance;
+
+      // Allocations familiales (family allowances) — from CAF
+      let caf = 0;
+      if(kids >= 2){
+        // Base: ~€175/month for 2 kids, +€89/additional (income-tested, use middle bracket)
+        caf = kids === 2 ? 175*12 : kids === 3 ? (175+89)*12 : (175+89*2)*12;
+        if(totalIncome > 67932) caf = caf * 0.5; // reduced above threshold
+        if(totalIncome > 75924) caf = caf * 0.25;
+      }
+
+      const totalTax = IR + social;
+      const netAnnual = totalIncome - totalTax + caf;
+
+      rows.push({label:'Professional Deduction (10%)', value:-profDed, note:'capped at €14,171'});
+      rows.push({label:`Quotient familial`, value:0, note:`${parts} parts — ${marital}, ${kids} child${kids!==1?'ren':''}`});
+      rows.push({label:'Income Tax (IR)', value:IR});
+      rows.push({label:'CSG / CRDS (9.8%)', value:csg_crds});
+      rows.push({label:'Pension + Retraite (10.7%)', value:pension+pension_comp});
+      rows.push({label:'Unemployment + Prévoyance', value:unemployment+prevoyance});
+      if(caf>0) rows.push({label:`Allocations Familiales (${kids} enfants)`, value:-caf, note:'CAF benefit'});
+
+      return {
+        rows, totalTax,
+        netAnnual, myNet:netAnnual, spouseNet:0, benefits:caf,
+        note:`France: Quotient familial (${parts} parts) reduces tax burden for families. Each child adds 0.5 parts.`
+      };
+    },
+    col:{
+      'Île-de-France (Paris)':       {city:{rent:1800,groceries:450,transport:86, utilities:180,dining:380,other:280},suburb:{rent:1100,groceries:400,transport:120,utilities:160,dining:280,other:230}},
+      'Provence-Alpes (Marseille)':  {city:{rent:900, groceries:400,transport:50, utilities:170,dining:280,other:220},suburb:{rent:700, groceries:370,transport:120,utilities:155,dining:220,other:190}},
+      'Auvergne-Rhône (Lyon)':       {city:{rent:1000,groceries:410,transport:75, utilities:175,dining:300,other:230},suburb:{rent:750, groceries:380,transport:110,utilities:160,dining:240,other:200}},
+      'Occitanie (Toulouse)':        {city:{rent:850, groceries:400,transport:63, utilities:170,dining:270,other:210},suburb:{rent:650, groceries:370,transport:110,utilities:155,dining:220,other:185}},
+    },
+    kidsColAdder:(kids)=>({groceries:kids*120,other:kids*190,transport:kids*40})
+  },
+
+  israel: {
+    name:'Israel', currency:'₪',
+    regions:['Tel Aviv District','Jerusalem District','Haifa District','Central District'],
+    calcTax:(gross, region, marital, kids, spouseGross, jointFiling) => {
+      const rows = [];
+      // Israel: credit points system
+      // Single: 2.25 points. Married (earning): +0.5 points.
+      // Each child: 1.5 points under 5, 0.5 points age 6-17
+      // Credit point value: ₪242/month = ₪2,904/year
+      const pointValue = 2904;
+
+      let myPoints = 2.25;
+      if(marital === 'married') myPoints += 0.5;
+      myPoints += kids * 1.5; // simplified: all children at max rate
+
+      const myCredit = myPoints * pointValue;
+
+      const calcIT = (g) => {
+        const b=[[84120,0.10],[120720,0.14],[193800,0.20],[270000,0.31],[540000,0.35],[698280,0.47],[Infinity,0.50]];
+        let t=0,p=0; for(const[top,r]of b){if(g<=p)break;t+=(Math.min(g,top)-p)*r;p=top;} return t;
+      };
+
+      const myIT = Math.max(0, calcIT(gross) - myCredit);
+
+      // Bituach Leumi + health
+      const niThreshold = 7522*12;
+      const myNI = gross<=niThreshold ? gross*0.035 : niThreshold*0.035+(gross-niThreshold)*0.12;
+      const myHealth = gross<=niThreshold ? gross*0.031 : niThreshold*0.031+(gross-niThreshold)*0.05;
+
+      let spouseIT=0, spouseNI=0, spouseHealth=0, spouseNet=0;
+      if(marital==='married' && spouseGross>0){
+        const spousePoints = 2.25 + 0.5; // married + earning
+        const spouseCredit = spousePoints * pointValue;
+        spouseIT = Math.max(0, calcIT(spouseGross) - spouseCredit);
+        spouseNI = spouseGross<=niThreshold ? spouseGross*0.035 : niThreshold*0.035+(spouseGross-niThreshold)*0.12;
+        spouseHealth = spouseGross<=niThreshold ? spouseGross*0.031 : niThreshold*0.031+(spouseGross-niThreshold)*0.05;
+        spouseNet = spouseGross - spouseIT - spouseNI - spouseHealth;
+        rows.push({label:'Spouse Income Tax', value:spouseIT, note:`${spousePoints} credit points`});
+        rows.push({label:'Spouse Bituach Leumi + Health', value:spouseNI+spouseHealth, note:'spouse'});
+      }
+
+      // Child allowance from Bituach Leumi: ~₪190/month first child, ₪197 additional (2024)
+      let childAllowance = 0;
+      if(kids>0){
+        childAllowance = 190*12 + Math.max(0,kids-1)*197*12;
+      }
+
+      const myTotalTax = myIT + myNI + myHealth;
+      const myNet = gross - myTotalTax;
+      const totalTax = myTotalTax + spouseIT + spouseNI + spouseHealth;
+      const netAnnual = myNet + spouseNet + childAllowance;
+
+      rows.push({label:'Credit Points', value:-myCredit, note:`${myPoints} points × ₪2,904`});
+      rows.push({label:'Income Tax (Mas Hachnasa)', value:myIT});
+      rows.push({label:'National Insurance (Bituach Leumi)', value:myNI});
+      rows.push({label:'Health Insurance (Bituach Briut)', value:myHealth});
+      if(childAllowance>0) rows.push({label:`Child Allowance (${kids} child${kids>1?'ren':''})`, value:-childAllowance, note:'Bituach Leumi monthly'});
+
+      return {
+        rows, totalTax,
+        netAnnual, myNet, spouseNet, benefits:childAllowance,
+        note:`Israel: ${myPoints} credit points applied. Each child adds 1.5 points worth ₪4,356/year in tax savings.`
+      };
+    },
+    col:{
+      'Tel Aviv District':   {city:{rent:7500,groceries:1800,transport:230,utilities:500,dining:1200,other:800},suburb:{rent:5500,groceries:1650,transport:400,utilities:450,dining:900,other:700}},
+      'Jerusalem District':  {city:{rent:5500,groceries:1700,transport:200,utilities:480,dining:1000,other:700},suburb:{rent:4200,groceries:1600,transport:350,utilities:430,dining:800,other:620}},
+      'Haifa District':      {city:{rent:4500,groceries:1650,transport:200,utilities:460,dining:900,other:650},suburb:{rent:3500,groceries:1550,transport:320,utilities:420,dining:750,other:580}},
+      'Central District':    {city:{rent:6000,groceries:1750,transport:250,utilities:490,dining:1100,other:750},suburb:{rent:4800,groceries:1650,transport:380,utilities:460,dining:900,other:680}},
+    },
+    kidsColAdder:(kids)=>({groceries:kids*400,other:kids*600,transport:kids*100})
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════════════════════════
+function setMarital(v){
+  maritalStatus=v;
+  document.querySelectorAll('#maritalGroup .pill').forEach(p=>p.classList.toggle('active',p.textContent.toLowerCase()===v));
+  $('spouseSection').classList.toggle('visible', v==='married');
+  $('childSupportSection').classList.toggle('visible', v==='divorced');
+}
+
+function setKids(n){
+  numKids=n;
+  document.querySelectorAll('#kidsGroup .pill').forEach(p=>p.classList.toggle('active',p.textContent===(n===4?'4+':String(n))));
+  if(n>=4) numKids=4;
+}
+
+function toggleCity(type){
+  cityType=type;
+  $('btnCity').classList.toggle('active',type==='city');
+  $('btnSuburb').classList.toggle('active',type==='suburb');
+  calculate();
+}
+
+function updateRegions(){
+  const c=COUNTRIES[$('country').value];
+  $('currencySymbol').textContent=c.currency;
+  $('spouseCurrencySymbol').textContent=c.currency;
+  $('csCurrencySymbol').textContent=c.currency;
+  $('region').innerHTML=c.regions.map(r=>`<option value="${r}">${r}</option>`).join('');
+}
+
+$('jointTax').addEventListener('change',()=>{
+  $('jointTaxLabel').textContent=$('jointTax').checked?'Yes — file jointly':'No — file separately';
+});
+
+function fmt(n, currency){ return currency+Math.round(Math.abs(n)).toLocaleString(); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// MAIN CALCULATE
+// ══════════════════════════════════════════════════════════════════════════
+function calculate(){
+  const countryKey  = $('country').value;
+  const country     = COUNTRIES[countryKey];
+  const region      = $('region').value;
+  const gross       = parseFloat($('salary').value)||0;
+  const spouseGross = maritalStatus==='married' ? (parseFloat($('spouseSalary').value)||0) : 0;
+  const jointFiling = maritalStatus==='married' && $('jointTax').checked;
+  const childSupport= maritalStatus==='divorced' ? (parseFloat($('childSupport').value)||0) : 0;
+  const cur         = country.currency;
+
+  if(gross<=0) return;
+
+  const {rows:taxRows, totalTax, netAnnual, myNet, spouseNet, benefits, note} =
+    country.calcTax(gross, region, maritalStatus, numKids, spouseGross, jointFiling);
+
+  const totalGross = gross + spouseGross;
+  const netMonthly = netAnnual / 12;
+  const grossMonthly = totalGross / 12;
+
+  // Cost of living — add kids adder
+  const baseCol = country.col[region][cityType];
+  const kidsAdd = country.kidsColAdder(numKids);
+  const colData = {};
+  for(const k in baseCol){ colData[k] = baseCol[k] + (kidsAdd[k]||0); }
+
+  const colBase = Object.values(colData).reduce((a,b)=>a+b,0);
+  const csMonthly = childSupport / 12;
+  const colTotal  = colBase + csMonthly;
+  const surplus   = netMonthly - colTotal;
+
+  // ── VERDICT ──
+  const banner = $('verdictBanner');
+  banner.className = 'verdict-banner';
+  const surplusPct = surplus / netMonthly * 100;
+
+  if(surplus > netMonthly*0.2){
+    banner.classList.add('comfortable');
+    $('verdictEmoji').textContent='✅';
+    $('verdictLabel').textContent='Comfortable';
+    $('verdictTitle').textContent=`Your ${maritalStatus==='married'?'household':'salary'} works well in ${region}`;
+    $('verdictSub').textContent=`After all costs${numKids>0?` and ${numKids} child${numKids>1?'ren':''}`:''}, you have ${fmt(surplus,cur)}/month left — solid room to save and invest.`;
+  } else if(surplus>=0){
+    banner.classList.add('tight');
+    $('verdictEmoji').textContent='⚠️';
+    $('verdictLabel').textContent='Tight but manageable';
+    $('verdictTitle').textContent=`It's workable in ${region}, but leaves little room`;
+    $('verdictSub').textContent=`Only ${fmt(surplus,cur)}/month surplus after all expenses. Consider whether housing costs can be reduced.`;
+  } else {
+    banner.classList.add('tough');
+    $('verdictEmoji').textContent='❌';
+    $('verdictLabel').textContent='Not enough';
+    $('verdictTitle').textContent=`This income doesn't cover ${region} living costs`;
+    $('verdictSub').textContent=`Shortfall of ${fmt(Math.abs(surplus),cur)}/month. The household would need approximately ${fmt((colTotal*12/(1-(totalTax/totalGross))),cur)} gross/year to break even.`;
   }
 
-  sync('sav-goal','sav-goalSlider',calcSav);
-  sync('sav-start','sav-startSlider',calcSav);
-  sync('sav-monthly','sav-monthlySlider',calcSav);
-  sync('sav-rate','sav-rateSlider',calcSav);
+  // ── STATS ──
+  const statsHTML = [
+    {label:'Gross Household', value:fmt(grossMonthly,cur), cls:'gold', sub:'per month'},
+    {label:'Net Take-Home', value:fmt(netMonthly,cur), cls:'green', sub:`${(totalTax/totalGross*100).toFixed(1)}% tax rate`},
+    {label:'Total Tax Burden', value:fmt(totalTax/12,cur), cls:'red', sub:'per month'},
+    {label:'Cost of Living', value:fmt(colTotal,cur), cls:'amber', sub:'estimated monthly'},
+    {label:'Monthly Surplus', value:(surplus>=0?'+':'-')+fmt(surplus,cur), cls:surplus>0?'green':'red', sub:'after all costs'},
+  ];
+  if(benefits>0) statsHTML.splice(3,0,{label:'Benefits / Credits', value:fmt(benefits/12,cur), cls:'green', sub:'govt support/mo'});
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // TAX CALCULATOR
-  // ══════════════════════════════════════════════════════════════════════════
-  function taxUSA(gross, status) {
-    const stdDed = status === 'married' ? 29200 : 14600;
-    const taxable = Math.max(0, gross - stdDed);
+  $('statsGrid').innerHTML = statsHTML.map(s=>`
+    <div class="stat">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value ${s.cls}">${s.value}</div>
+      <div class="stat-sub">${s.sub}</div>
+    </div>
+  `).join('');
 
-    const bracketsS = [[11600,0.10],[35550,0.12],[53375,0.22],[91425,0.24],[51775,0.32],[365625,0.35],[Infinity,0.37]];
-    const bracketsM = [[23200,0.10],[71100,0.12],[106750,0.22],[182750,0.24],[103550,0.32],[243750,0.35],[Infinity,0.37]];
-    const brackets  = status === 'married' ? bracketsM : bracketsS;
+  // ── TAX ROWS ──
+  $('taxTitle').textContent = `Tax Breakdown${maritalStatus==='married'?' (Household)':''} — Annual`;
+  $('taxRows').innerHTML = taxRows.map(r=>`
+    <div class="detail-row">
+      <span class="dr-label">${r.label}${r.note?` <span class="dr-note">(${r.note})</span>`:''}</span>
+      <span class="dr-value ${r.value<0?'pos':r.value>0?'neg':''}">${r.value===0?'—':(r.value<0?'−':'')+fmt(r.value,cur)}</span>
+    </div>
+  `).concat([`
+    <div class="detail-row dr-divider">
+      <span class="dr-label" style="color:var(--text)">Annual Net Take-Home</span>
+      <span class="dr-value bold">${fmt(netAnnual,cur)}</span>
+    </div>
+    <div class="detail-row">
+      <span class="dr-label" style="color:var(--text-dim);font-size:11px;font-style:italic">${note}</span>
+    </div>
+  `]).join('');
 
-    let incomeTax = 0, rem = taxable;
-    for (const [size, rate] of brackets) {
-      const chunk = Math.min(rem, size);
-      incomeTax += chunk * rate;
-      rem -= chunk;
-      if (rem <= 0) break;
-    }
+  // ── COL ROWS ──
+  const colLabels={rent:'Rent (1-bed)',groceries:'Groceries',transport:'Transport',utilities:'Utilities',dining:'Dining & Lifestyle',other:'Other / Personal'};
+  $('colRows').innerHTML = Object.entries(colData).map(([k,v])=>`
+    <div class="detail-row">
+      <span class="dr-label">${colLabels[k]||k}${kidsAdd[k]?` <span class="dr-note">(+${fmt(kidsAdd[k],cur)} for kids)</span>`:''}</span>
+      <span class="dr-value">${fmt(v,cur)}</span>
+    </div>
+  `).concat([`
+    <div class="detail-row dr-divider">
+      <span class="dr-label" style="color:var(--text)">Total Monthly</span>
+      <span class="dr-value bold">${fmt(colBase,cur)}</span>
+    </div>
+  `]).join('');
 
-    const ssTax = Math.min(gross, 168600) * 0.062;
-    const medTax = gross * 0.0145 + Math.max(0, gross - 200000) * 0.009;
-    return { incomeTax, ss: ssTax, health: medTax, ni: 0,
-             total: incomeTax + ssTax + medTax,
-             labels: ['Federal Income Tax', 'Social Security (6.2%)', 'Medicare (1.45%)'],
-             amounts: [incomeTax, ssTax, medTax] };
+  // Child support callout
+  if(csMonthly>0){
+    $('csCallout').innerHTML=`<div class="cs-callout"><strong>Child support: ${fmt(csMonthly,cur)}/month</strong> — paid from after-tax income. This reduces your available surplus directly.</div>`;
+  } else {
+    $('csCallout').innerHTML='';
   }
 
-  function taxISR(gross, status) {
-    const brackets = [[81480,0.10],[35280,0.14],[70680,0.20],[73080,0.31],[279480,0.35],[Infinity,0.47]];
-    let incomeTax = 0, rem = gross;
-    for (const [size, rate] of brackets) {
-      const chunk = Math.min(rem, size);
-      incomeTax += chunk * rate;
-      rem -= chunk;
-      if (rem <= 0) break;
-    }
-    const creditPts = status === 'married' ? 2.75 : 2.25;
-    incomeTax = Math.max(0, incomeTax - creditPts * 2904);
+  // ── BARS ──
+  const colPct    = Math.min(100, colBase/netMonthly*100);
+  const taxPctBar = Math.min(100, totalTax/totalGross*100);
+  const csPctBar  = Math.min(100, csMonthly/netMonthly*100);
+  const surpPct   = Math.max(0, surplus/netMonthly*100);
 
-    const niFloor = 75972;
-    const niTax     = gross <= niFloor ? gross * 0.004 : niFloor * 0.004 + (gross - niFloor) * 0.07;
-    const healthTax = gross <= niFloor ? gross * 0.031 : niFloor * 0.031 + (gross - niFloor) * 0.05;
-    return { incomeTax, ss: 0, health: healthTax, ni: niTax,
-             total: incomeTax + niTax + healthTax,
-             labels: ['Income Tax (Mas Hachnasa)', 'National Insurance (Bituach Leumi)', 'Health Tax (Mas Briut)'],
-             amounts: [incomeTax, niTax, healthTax] };
+  $('colBar').style.width    = colPct+'%';
+  $('colBar').className      = 'bar-fill '+(colPct>90?'red':colPct>70?'amber':'green');
+  $('taxBar').style.width    = taxPctBar+'%';
+  $('surplusBar').style.width= surpPct+'%';
+  $('colPct').textContent    = colPct.toFixed(1)+'% of net';
+  $('taxBarPct').textContent = taxPctBar.toFixed(1)+'% of gross';
+  $('surplusPct').textContent= surpPct.toFixed(1)+'% of net';
+
+  if(csMonthly>0){
+    $('csBar').style.display='block';
+    $('csBarFill').style.width=csPctBar+'%';
+    $('csPct').textContent=csPctBar.toFixed(1)+'% of net';
+  } else {
+    $('csBar').style.display='none';
   }
 
-  function fmtCurrency(n, sym) {
-    const abs = Math.round(Math.abs(n));
-    return sym === '₪' ? '₪' + abs.toLocaleString() : '$' + abs.toLocaleString();
-  }
+  $('surplusNote').textContent = surplus>0
+    ? `Saving ${fmt(surplus,cur)}/month means ${fmt(surplus*12,cur)}/year — ${surplus*12>30000?'excellent savings potential':'enough to build an emergency fund over time'}.`
+    : `The household is ${fmt(Math.abs(surplus),cur)}/month short. Options: negotiate higher salary, move outside the city center, or reduce discretionary spending.`;
 
-  function calcTax() {
-    const country = $('tax-country').value;
-    const status  = $('tax-status').value;
-    const gross   = parseFloat($('tax-salary').value) || 0;
-    const isISR   = country === 'isr';
-    const sym     = isISR ? '₪' : '$';
+  $('dataFootnote').textContent=`Tax rates: ${country.name} 2024 official rates. Cost of living: Numbeo & national statistics 2024. Family benefits included where applicable. Estimates for illustration.`;
 
-    // update symbol + slider range
-    $('tax-symbol').textContent = sym;
-    const slMax = isISR ? 2000000 : 500000;
-    const slMaxLabel = isISR ? '₪2M' : '$500K';
-    const slider = $('tax-salarySlider');
-    slider.max = slMax;
-    if (parseFloat(slider.value) > slMax) slider.value = slMax;
-    $('tax-sl-min').textContent = sym + '0';
-    $('tax-sl-max').textContent = slMaxLabel;
-    $('tax-status-label').textContent = isISR ? 'Marital Status' : 'Filing Status';
+  $('results').classList.add('visible');
+  setTimeout(()=>$('results').scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
 
-    const r = isISR ? taxISR(gross, status) : taxUSA(gross, status);
-    const net = gross - r.total;
-    const effRate = gross > 0 ? (r.total / gross * 100) : 0;
-
-    // breakdown card
-    const bd = $('tax-breakdown');
-    const dots = ['#e07060','#c9a84c','#6abf8a'];
-    let html = `<div class="tax-row gross">
-      <div class="tax-row-label"><span class="tax-row-dot" style="background:var(--gold-light)"></span>Gross Salary</div>
-      <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(gross, sym)}</div></div>
-    </div>`;
-    r.labels.forEach((lbl, i) => {
-      if (r.amounts[i] <= 0) return;
-      const pct = gross > 0 ? (r.amounts[i] / gross * 100).toFixed(1) : '0.0';
-      html += `<div class="tax-row">
-        <div class="tax-row-label"><span class="tax-row-dot" style="background:${dots[i]}"></span>${lbl}</div>
-        <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(r.amounts[i], sym)}</div><div class="tax-row-rate">${pct}% of gross</div></div>
-      </div>`;
-    });
-    html += `<div class="tax-row total">
-      <div class="tax-row-label">Total Deductions</div>
-      <div class="tax-row-right"><div class="tax-row-amount">${fmtCurrency(r.total, sym)}</div><div class="tax-row-rate">${effRate.toFixed(1)}% of gross</div></div>
-    </div>`;
-    bd.innerHTML = html;
-
-    // summary stats
-    $('tax-net-annual').textContent  = fmtCurrency(net, sym);
-    $('tax-net-monthly').textContent = fmtCurrency(net / 12, sym);
-    $('tax-eff-rate').textContent    = effRate.toFixed(1) + '%';
-    $('tax-total-ded').textContent   = fmtCurrency(r.total, sym);
-
-    // pain bar
-    const barPct = Math.min(effRate, 70);
-    $('tax-pain-bar').style.width = (barPct / 70 * 100) + '%';
-    $('tax-pain-pct').textContent = effRate.toFixed(1) + '%';
-
-    const v = effRate < 15 ? 'Low tax burden — you keep most of what you earn.'
-            : effRate < 25 ? 'Moderate tax burden — a fair share goes to the government.'
-            : effRate < 35 ? 'High tax burden — over a third of your income is taxed.'
-            : 'Very high tax burden — nearly half your earnings go to taxes.';
-    $('tax-verdict').textContent = v;
-  }
-
-  $('tax-country').addEventListener('change', () => {
-    // reset salary to a sensible default for the country
-    const isISR = $('tax-country').value === 'isr';
-    $('tax-salary').value = isISR ? 200000 : 80000;
-    $('tax-salarySlider').value = isISR ? 200000 : 80000;
-    calcTax();
-  });
-  $('tax-status').addEventListener('change', calcTax);
-  $('tax-salary').addEventListener('input', () => { $('tax-salarySlider').value = $('tax-salary').value; calcTax(); });
-  $('tax-salarySlider').addEventListener('input', () => { $('tax-salary').value = $('tax-salarySlider').value; calcTax(); });
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  calcLoan();
-  calcCC();
-  calcBvR();
-  calcSav();
-  calcTax();
-
-  // ── PWA ───────────────────────────────────────────────────────────────────
-  if('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  }
+// init
+updateRegions();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
