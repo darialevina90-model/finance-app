@@ -407,16 +407,20 @@ REQUIRED INFO to calculate:
 2. Gross annual salary (in local currency)
 3. Marital status (single / married / divorced)
 4. Number of children (0, 1, 2, 3, 4+)
-5. Spouse salary (if married, can be 0)
-6. Child support payments per year (if divorced, can be 0)
+5. Spouse salary if married (ask only if married — default to 0 if they don't mention it)
+6. Child support PAID per year if divorced (this is money they PAY OUT, not receive — ask only if divorced — default to 0 if not mentioned)
 
 CONVERSATION RULES:
 - Be warm and conversational, not robotic
-- Ask for ONE missing piece of information at a time — never dump a list of questions
-- If the user gives partial info (e.g. "London on £60k"), acknowledge what you have and ask for the next missing piece
+- Ask for ONE missing piece of information at a time — NEVER ask the same question twice
+- Keep track of what the user already told you — never re-ask something they already answered
+- If the user gives partial info (e.g. "London on £60k"), acknowledge what you have and ask for the NEXT missing piece only
+- For child support: ONLY ask if the user is divorced. The question is about payments they MAKE (not receive). If they mention receiving child support, note it but ask if they also make any payments.
+- If marital status is single or married, SKIP the child support question entirely
 - Once you have all required info, calculate and return the result as JSON
 - After showing results, offer a follow-up (e.g. compare another city, change family situation)
 - If the user asks something outside your scope, gently redirect
+- NEVER ask more than one question per message
 
 WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (no extra text before or after):
 {
@@ -546,27 +550,33 @@ async function sendMessage() {
 
     removeTyping();
 
-    // Check if it's a result JSON
-    const trimmed = reply.trim();
-    if (trimmed.startsWith('{') && trimmed.includes('"type": "result"')) {
+    // Check if it's a result JSON — handle both raw JSON and ```json blocks
+    let trimmed = reply.trim();
+    // Strip markdown code fences if present
+    trimmed = trimmed.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/,'').trim();
+
+    if (trimmed.includes('"type": "result"') || trimmed.includes('"type":"result"')) {
       try {
         const parsed = JSON.parse(trimmed);
         const calcResult = runCalculation(parsed);
+        const cur = COUNTRIES[parsed.country]?.currency || '$';
         if (calcResult) {
           addMessage('ai', parsed.summary, {
             resultData: calcResult,
             quickReplies: [
               `How about outside the city center?`,
-              `Compare with another city`,
-              `What if my spouse also earns ${COUNTRIES[parsed.country]?.currency || ''}40,000?`,
+              `Compare this with another city`,
+              `What if I earned ${cur}${Math.round((parsed.salary||0)*1.3).toLocaleString()} instead?`,
               `What salary would I need to be comfortable?`
             ]
           });
         } else {
-          addMessage('ai', parsed.summary || "I couldn't calculate that. Could you double-check the details?");
+          addMessage('ai', parsed.summary || "I couldn't calculate that — could you double-check the details?");
         }
       } catch(e) {
-        addMessage('ai', reply);
+        // JSON parse failed — show raw reply but log error
+        console.error('JSON parse error:', e, trimmed);
+        addMessage('ai', "I have all the details I need but hit a technical issue. Could you try rephrasing your question?");
       }
     } else {
       addMessage('ai', reply);
