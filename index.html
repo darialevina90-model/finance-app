@@ -419,7 +419,9 @@ CONVERSATION RULES:
 - If marital status is single or married, SKIP the child support question entirely
 - Once you have all required info, calculate and return the result as JSON
 - After showing results, offer a follow-up (e.g. compare another city, change family situation)
-- If the user asks something outside your scope, gently redirect
+- Questions about cost of living breakdown, taxes, disposable income, surplus, or "how much is left" are ALWAYS in scope — answer them directly and confidently
+- NEVER tell users to consult a tax professional or financial advisor — you are the expert here, give direct concrete answers
+- Only redirect if the question is truly unrelated (weather, recipes, sports etc.)
 - NEVER ask more than one question per message
 
 WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (no extra text before or after):
@@ -550,33 +552,33 @@ async function sendMessage() {
 
     removeTyping();
 
-    // Check if it's a result JSON — handle both raw JSON and ```json blocks
-    let trimmed = reply.trim();
-    // Strip markdown code fences if present
-    trimmed = trimmed.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/,'').trim();
-
-    if (trimmed.includes('"type": "result"') || trimmed.includes('"type":"result"')) {
+    // Try to extract JSON from anywhere in the reply
+    let parsed = null;
+    const jsonMatch = reply.match(/\{[\s\S]*"type"\s*:\s*"result"[\s\S]*\}/);
+    if (jsonMatch) {
       try {
-        const parsed = JSON.parse(trimmed);
-        const calcResult = runCalculation(parsed);
-        const cur = COUNTRIES[parsed.country]?.currency || '$';
-        if (calcResult) {
-          addMessage('ai', parsed.summary, {
-            resultData: calcResult,
-            quickReplies: [
-              `How about outside the city center?`,
-              `Compare this with another city`,
-              `What if I earned ${cur}${Math.round((parsed.salary||0)*1.3).toLocaleString()} instead?`,
-              `What salary would I need to be comfortable?`
-            ]
-          });
-        } else {
-          addMessage('ai', parsed.summary || "I couldn't calculate that — could you double-check the details?");
-        }
+        parsed = JSON.parse(jsonMatch[0]);
       } catch(e) {
-        // JSON parse failed — show raw reply but log error
-        console.error('JSON parse error:', e, trimmed);
-        addMessage('ai', "I have all the details I need but hit a technical issue. Could you try rephrasing your question?");
+        console.error('JSON parse error:', e);
+        console.log('Raw reply:', reply);
+      }
+    }
+
+    if (parsed) {
+      const calcResult = runCalculation(parsed);
+      const cur = COUNTRIES[parsed.country]?.currency || '$';
+      if (calcResult) {
+        addMessage('ai', parsed.summary, {
+          resultData: calcResult,
+          quickReplies: [
+            `How about outside the city center?`,
+            `Compare this with another city`,
+            `What if I earned ${cur}${Math.round((parsed.salary||0)*1.3).toLocaleString()} instead?`,
+            `What salary would I need to be comfortable?`
+          ]
+        });
+      } else {
+        addMessage('ai', parsed.summary || "I have your details but couldn't run the calculation. Could you confirm the country and region?");
       }
     } else {
       addMessage('ai', reply);
