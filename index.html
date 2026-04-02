@@ -250,6 +250,9 @@
           <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/></svg>
         </button>
       </div>
+      <div style="text-align:center;margin-top:10px">
+        <button onclick="restartChat()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:6px 16px;border-radius:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">↺ New Calculation</button>
+      </div>
     </div>
   </div>
 </div>
@@ -332,11 +335,14 @@
       <div class="spouse-section" id="childSupportSection">
         <div class="fields-row cols-2">
           <div class="field">
-            <label>Annual Child Support Payments</label>
+            <label>Annual Child Support Paid</label>
             <div class="field-row"><span class="field-prefix" id="csCurrencySymbol">£</span><input type="number" id="childSupport" value="0" min="0" step="500"/></div>
+            <p style="font-size:11px;color:var(--text-dim);margin-top:5px">Money you pay out — reduces surplus</p>
           </div>
-          <div class="field" style="display:flex;align-items:flex-end">
-            <p style="font-size:12px;color:var(--text-dim);line-height:1.5">Paid from after-tax income — reduces your available surplus.</p>
+          <div class="field">
+            <label>Annual Child Support Received</label>
+            <div class="field-row"><span class="field-prefix" id="csReceivedCurrencySymbol">£</span><input type="number" id="childSupportReceived" value="0" min="0" step="500"/></div>
+            <p style="font-size:11px;color:var(--text-dim);margin-top:5px">Money you receive — adds to income after tax</p>
           </div>
         </div>
       </div>
@@ -398,47 +404,82 @@ let isThinking = false;
 
 const SYSTEM_PROMPT = `You are AffordIt — a friendly financial advisor helping people understand if they can afford to live in a specific city or country.
 
-CRITICAL RULES — follow these absolutely:
-1. You NEVER perform calculations yourself. All numbers (tax, net pay, costs, surplus) are calculated by the app and fed back to you.
-2. You ONLY collect information and explain results that are given to you.
-3. You NEVER invent, estimate, or guess any financial numbers.
-4. If the user asks "how much is left" or "what's my surplus" — you explain the result the app calculated, not your own estimate.
+CRITICAL RULES:
+1. You NEVER perform calculations yourself. The app calculates everything.
+2. You ONLY collect inputs and explain results given back to you.
+3. You NEVER invent or guess any financial numbers.
+4. If the user gives a salary in a foreign currency (e.g. "$165k in Tel Aviv"), accept it as-is and record the currency — the app will convert it.
 
-COUNTRIES SUPPORTED:
-UK (England/Wales, Scotland), USA (California, New York, Texas, Florida, Illinois, Washington), Canada (Ontario, British Columbia, Quebec, Alberta), Germany (Bavaria, Berlin, Hamburg, North Rhine-Westphalia), France (Paris/Île-de-France, Marseille/Provence-Alpes, Lyon/Auvergne-Rhône, Toulouse/Occitanie), Israel (Tel Aviv District, Jerusalem District, Haifa District, Central District)
+COUNTRIES & LOCAL CURRENCIES:
+- uk → GBP (England/Wales, Scotland)
+- usa → USD (California, New York, Texas, Florida, Illinois, Washington)
+- canada → CAD (Ontario, British Columbia, Quebec, Alberta)
+- germany → EUR (Bavaria, Berlin, Hamburg, North Rhine-Westphalia)
+- france → EUR (Île-de-France/Paris, Provence-Alpes/Marseille, Auvergne-Rhône/Lyon, Occitanie/Toulouse)
+- israel → ILS (Tel Aviv District, Jerusalem District, Haifa District, Central District)
 
-REQUIRED INFO to collect:
+REQUIRED INFO:
 1. Country and region/city
-2. Gross annual salary (in local currency)
+2. Salary amount AND currency (e.g. 165000 USD, or 300000 ILS)
 3. Marital status: single / married / divorced
 4. Number of children (0–4+)
-5. IF married: spouse gross annual salary (default 0 if not mentioned)
-6. IF divorced: child support PAID annually (money they pay out — default 0 if not mentioned), AND child support RECEIVED annually (money they receive — default 0 if not mentioned)
+5. IF married: spouse salary amount and currency (default 0)
+6. IF divorced AND kids > 0: child support PAID per year (money they pay out — default 0)
+7. IF divorced AND kids > 0: child support RECEIVED per year (money they receive — default 0)
+   NOTE: If divorced with 0 kids, SKIP child support questions entirely.
 
 CONVERSATION RULES:
-- Ask ONE question at a time, never repeat a question
-- Be warm and concise — no long paragraphs
-- Never skip collecting all required info before returning JSON
-- For divorced users: ask about child support paid AND received separately (two different questions if needed)
-- NEVER invent financial numbers or estimates
+- Ask ONE question at a time — never repeat
+- Be warm, concise — no long paragraphs
+- If salary currency differs from local currency, state: "I'll convert [X currency] to [local currency] using today's rate for the calculation."
+- NEVER ask child support questions if kids = 0
+- Collect all required info before returning JSON
 
-WHEN YOU HAVE ALL INFO — respond with ONLY this JSON, nothing else before or after:
+WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (nothing before or after):
 {
   "type": "result",
   "country": "uk|usa|canada|germany|france|israel",
-  "region": "exact region name",
-  "salary": 60000,
+  "region": "exact region name from the list above",
+  "salaryAmount": 60000,
+  "salaryCurrency": "GBP",
+  "spouseSalaryAmount": 0,
+  "spouseSalaryCurrency": "GBP",
   "marital": "single|married|divorced",
   "kids": 0,
-  "spouseSalary": 0,
   "jointFiling": true,
   "childSupport": 0,
   "childSupportReceived": 0,
   "cityType": "city",
-  "summary": "ONE sentence acknowledging what you collected. Do NOT include any numbers — the app will calculate and display those."
+  "summary": "One sentence only — acknowledge what you collected. Zero numbers — app calculates those."
 }
 
 If you need more info, respond conversationally only.`;
+
+function restartChat() {
+  // Clear conversation history
+  conversationHistory.length = 0;
+  window.lastCalcResult = null;
+  window.lastParsed = null;
+
+  // Clear messages and show welcome again
+  const msgs = $('messages');
+  msgs.innerHTML = `
+    <div class="msg ai">
+      <div class="msg-avatar">✦</div>
+      <div>
+        <div class="msg-bubble">
+          Hi! I can help you figure out if a salary is enough to live comfortably in the UK, US, Canada, Germany, France, or Israel — including taxes, family situation, and real cost of living.<br/><br/>
+          Just tell me your situation. For example: <em>"I earn £65,000 in London, married with 2 kids"</em> or <em>"Is $90k enough to live in New York as a single person?"</em>
+        </div>
+        <div class="quick-replies">
+          <div class="qr-chip" onclick="sendQuick('Is £60,000 enough to live in London?')">London on £60k?</div>
+          <div class="qr-chip" onclick="sendQuick('Can a family of 4 afford Tel Aviv on ₪400,000?')">Family in Tel Aviv?</div>
+          <div class="qr-chip" onclick="sendQuick('Compare $100k in New York vs California')">NY vs California?</div>
+          <div class="qr-chip" onclick="sendQuick('Is €70,000 good in Berlin for a single person?')">Berlin on €70k?</div>
+        </div>
+      </div>
+    </div>`;
+}
 
 function autoResize(el) {
   el.style.height = 'auto';
@@ -565,7 +606,13 @@ async function sendMessage() {
     }
 
     if (parsed) {
-      const calcResult = runCalculation(parsed);
+      // Normalize currency BEFORE calculation
+      const normalized = normalizeCurrency(parsed);
+      const calcResult = runCalculation(normalized);
+      // Pass normalized so explanation knows original + converted values
+      normalized._fxInfo = normalized.salaryRate
+        ? `${normalized.salaryOriginalAmount.toLocaleString()} ${normalized.salaryOriginalCurrency} → ${normalized.salary.toLocaleString()} ${normalized.localCurrency} (rate: 1 ${normalized.salaryOriginalCurrency} = ${normalized.salaryRate.toFixed(2)} ${normalized.localCurrency})`
+        : null;
       const cur = COUNTRIES[parsed.country]?.currency || '$';
       if (calcResult) {
         // Feed results BACK to GPT so it explains real numbers, not hallucinated ones
@@ -582,6 +629,7 @@ async function sendMessage() {
 RULES:
 - Use ONLY the numbers provided — never invent or recalculate anything
 - Be warm, clear, and concise — 2-3 sentences max
+- If fxConversion is provided, mention it naturally (e.g. "After converting your USD salary to NIS...")
 - Highlight the key insight (surplus or shortfall)
 - Mention child support received/paid if non-zero
 - End with one encouraging or practical tip`
@@ -589,7 +637,8 @@ RULES:
               {
                 role: 'user',
                 content: JSON.stringify({
-                  userInputs: parsed,
+                  userInputs: normalized,
+                  fxConversion: normalized._fxInfo || null,
                   calculatedResults: {
                     grossMonthly: Math.round(calcResult.totalGross / 12),
                     netMonthly: Math.round(calcResult.totalIncome),
@@ -654,10 +703,13 @@ function buildResultCard(r, summary) {
 
   const cur = r.currency;
 
-  const hasCSReceived = r.csReceived > 0;
+  // Show FX conversion banner if currency was converted
+  const fxBanner = r.fxInfo ? `<div style="background:var(--gold-dim);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--gold-light);line-height:1.6">💱 Currency converted: ${r.fxInfo}</div>` : '';
   const hasCSPaid = r.csPaid > 0;
+  const hasCSReceived = r.csReceived > 0;
 
   card.innerHTML = `
+    ${fxBanner}
     <div class="rc-verdict ${verdictClass}">${verdictText} — ${r.region}</div>
     <div class="rc-title">${r.surplus >= 0 ? '+' + fmt(r.surplus, cur) + '/mo surplus' : '−' + fmt(r.surplus, cur) + '/mo shortfall'}</div>
     <div class="rc-stats">
@@ -812,6 +864,51 @@ const COUNTRIES = {
 };
 
 // region name matching — GPT might return slightly different names
+// ── FX RATES (hardcoded 2024 approximate) ────────────────────────────────
+const LOCAL_CURRENCY = { uk:'GBP', usa:'USD', canada:'CAD', germany:'EUR', france:'EUR', israel:'ILS' };
+
+const FX = {
+  USD_ILS: 3.70,  ILS_USD: 1/3.70,
+  EUR_ILS: 4.02,  ILS_EUR: 1/4.02,
+  GBP_ILS: 4.75,  ILS_GBP: 1/4.75,
+  USD_GBP: 0.79,  GBP_USD: 1/0.79,
+  USD_EUR: 0.92,  EUR_USD: 1/0.92,
+  USD_CAD: 1.36,  CAD_USD: 1/1.36,
+  GBP_EUR: 1.17,  EUR_GBP: 1/1.17,
+  GBP_CAD: 1.72,  CAD_GBP: 1/1.72,
+  EUR_CAD: 1.47,  CAD_EUR: 1/1.47,
+};
+
+function convertCurrency(amount, from, to) {
+  if (!from || !to || from === to) return { converted: amount, rate: 1 };
+  const key = `${from}_${to}`;
+  const rate = FX[key];
+  if (!rate) return { converted: amount, rate: 1 }; // fallback: no conversion
+  return { converted: amount * rate, rate };
+}
+
+function normalizeCurrency(parsed) {
+  const target = LOCAL_CURRENCY[parsed.country] || 'USD';
+  const salaryCur   = (parsed.salaryCurrency || target).toUpperCase();
+  const spouseCur   = (parsed.spouseSalaryCurrency || target).toUpperCase();
+  const salaryAmt   = parsed.salaryAmount ?? parsed.salary ?? 0;
+  const spouseAmt   = parsed.spouseSalaryAmount ?? parsed.spouseSalary ?? 0;
+
+  const { converted: salaryLocal, rate: salaryRate } = convertCurrency(salaryAmt, salaryCur, target);
+  const { converted: spouseLocal }                   = convertCurrency(spouseAmt, spouseCur, target);
+
+  return {
+    ...parsed,
+    salary: Math.round(salaryLocal),
+    spouseSalary: Math.round(spouseLocal),
+    // preserve originals for display
+    salaryOriginalAmount: salaryAmt,
+    salaryOriginalCurrency: salaryCur,
+    salaryRate: salaryCur !== target ? salaryRate : null,
+    localCurrency: target,
+  };
+}
+
 function findRegion(country, regionStr) {
   const regions = COUNTRIES[country]?.regions || [];
   // exact match first
@@ -854,7 +951,8 @@ function runCalculation(parsed) {
     return {
       netMonthly, totalIncome, colMonthly, csPaid, csReceived,
       surplus, taxPct, currency: c.currency, region,
-      totalGross, totalTax, netAnnual
+      totalGross, totalTax, netAnnual,
+      fxInfo: parsed._fxInfo || null
     };
   } catch(e) {
     console.error('Calculation error:', e);
@@ -893,6 +991,7 @@ function updateRegions() {
   $('currencySymbol').textContent = c.currency;
   $('spouseCurrencySymbol').textContent = c.currency;
   $('csCurrencySymbol').textContent = c.currency;
+  $('csReceivedCurrencySymbol').textContent = c.currency;
   $('region').innerHTML = c.regions.map(r => `<option value="${r}">${r}</option>`).join('');
 }
 
@@ -907,7 +1006,8 @@ function calculate() {
   const gross = parseFloat($('salary').value) || 0;
   const spouseGross = maritalStatus === 'married' ? (parseFloat($('spouseSalary').value) || 0) : 0;
   const joint = maritalStatus === 'married' && $('jointTax').checked;
-  const cs = maritalStatus === 'divorced' ? (parseFloat($('childSupport').value) || 0) : 0;
+  const cs         = maritalStatus === 'divorced' ? (parseFloat($('childSupport').value) || 0) : 0;
+  const csReceived = maritalStatus === 'divorced' ? (parseFloat($('childSupportReceived').value) || 0) : 0;
   const cur = c.currency;
   if (gross <= 0) return;
 
@@ -920,10 +1020,12 @@ function calculate() {
   const kidsAdd = c.kidsColAdder(numKids);
   const colData = {};
   for (const k in baseCol) colData[k] = baseCol[k] + (kidsAdd[k] || 0);
-  const colBase = Object.values(colData).reduce((a,b) => a+b, 0);
-  const csM = cs / 12;
-  const colTotal = colBase + csM;
-  const surplus = netMonthly - colTotal;
+  const colBase    = Object.values(colData).reduce((a,b) => a+b, 0);
+  const csM        = cs / 12;
+  const csReceivedM= csReceived / 12;
+  const colTotal   = colBase + csM;
+  const totalIncomM= netMonthly + csReceivedM;
+  const surplus    = totalIncomM - colTotal;
   const effRate = (totalTax / totalGross * 100).toFixed(1);
 
   // verdict
@@ -951,8 +1053,10 @@ function calculate() {
     {label:'Gross Household', value:fmt(grossMonthly,cur), cls:'gold', sub:'/month'},
     {label:'Net Take-Home', value:fmt(netMonthly,cur), cls:'green', sub:`${effRate}% tax rate`},
     {label:'Total Tax', value:fmt(totalTax/12,cur), cls:'red', sub:'/month'},
-    {label:'Cost of Living', value:fmt(colTotal,cur), cls:'amber', sub:'estimated/mo'},
-    {label:'Monthly Surplus', value:(surplus>=0?'+':'-')+fmt(surplus,cur), cls:surplus>0?'green':'red', sub:'after all costs'},
+    {label:'Cost of Living', value:fmt(colBase,cur), cls:'amber', sub:'excl. child support'},
+    ...(csM>0 ? [{label:'CS Paid /mo', value:'−'+fmt(csM,cur), cls:'red', sub:'child support out'}] : []),
+    ...(csReceivedM>0 ? [{label:'CS Received /mo', value:'+'+fmt(csReceivedM,cur), cls:'green', sub:'child support in'}] : []),
+    {label:'Monthly Surplus', value:(surplus>=0?'+':'-')+fmt(surplus,cur), cls:surplus>0?'green':'red', sub:'after everything'},
   ];
   $('statsGrid').innerHTML = stats.map(s=>`<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value ${s.cls}">${s.value}</div><div class="stat-sub">${s.sub}</div></div>`).join('');
 
@@ -962,14 +1066,61 @@ function calculate() {
   $('csCallout').innerHTML = csM>0 ? `<div class="cs-callout"><strong>Child support: ${fmt(csM,cur)}/mo</strong> — from after-tax income.</div>` : '';
 
   // bars
-  const cp=Math.min(100,colBase/netMonthly*100), tp=Math.min(100,totalTax/totalGross*100), sp=Math.max(0,surplus/netMonthly*100), csp=Math.min(100,csM/netMonthly*100);
+  // Use totalIncomM (net + cs received) as base for percentage calculations
+  const incomeBase = totalIncomM;
+  const cp  = Math.min(100, colBase/incomeBase*100);
+  const tp  = Math.min(100, totalTax/totalGross*100);
+  const csp = Math.min(100, csM/incomeBase*100);
+  const csrp= Math.min(100, csReceivedM/incomeBase*100);
+  const sp  = Math.max(0, surplus/incomeBase*100);
+
   $('colBar').style.width=cp+'%'; $('colBar').className='bar-fill '+(cp>90?'red':cp>70?'amber':'green');
   $('taxBar').style.width=tp+'%'; $('surplusBar').style.width=sp+'%';
-  $('colPct').textContent=cp.toFixed(1)+'% of net'; $('taxBarPct').textContent=tp.toFixed(1)+'% of gross'; $('surplusPct').textContent=sp.toFixed(1)+'% of net';
-  if(csM>0){$('csBarWrap').style.display='block';$('csBarFill').style.width=csp+'%';$('csPct').textContent=csp.toFixed(1)+'% of net';}else{$('csBarWrap').style.display='none';}
-  $('surplusNote').textContent = surplus>0 ? `Saving ${fmt(surplus,cur)}/month = ${fmt(surplus*12,cur)}/year.` : `Shortfall of ${fmt(Math.abs(surplus),cur)}/mo. Negotiate higher salary or choose a lower-cost area.`;
+  $('colPct').textContent=cp.toFixed(1)+'% of income'; $('taxBarPct').textContent=tp.toFixed(1)+'% of gross'; $('surplusPct').textContent=sp.toFixed(1)+'% of income';
+
+  // Show/hide CS paid bar
+  if(csM>0){$('csBarWrap').style.display='block';$('csBarFill').style.width=csp+'%';$('csPct').textContent=csp.toFixed(1)+'% of income';}
+  else{$('csBarWrap').style.display='none';}
+
+  // Show/hide CS received bar (new)
+  let csRecBar = $('csReceivedBarWrap');
+  if(!csRecBar){
+    // Create it dynamically if not present
+    const surplusBarEl = $('surplusBar').closest('.bar-wrap');
+    const newBar = document.createElement('div');
+    newBar.className='bar-wrap'; newBar.id='csReceivedBarWrap'; newBar.style.display='none';
+    newBar.innerHTML=`<div class="bar-label-row"><span>Child Support Received</span><span id="csRecPct"></span></div><div class="bar-bg"><div class="bar-fill green" id="csRecBarFill" style="width:0%"></div></div>`;
+    surplusBarEl.parentNode.insertBefore(newBar, surplusBarEl);
+    csRecBar = newBar;
+  }
+  if(csReceivedM>0){
+    csRecBar.style.display='block';
+    document.getElementById('csRecBarFill').style.width=csrp+'%';
+    document.getElementById('csRecPct').textContent='+'+csrp.toFixed(1)+'% of income';
+  } else {
+    csRecBar.style.display='none';
+  }
+
+  // Surplus note — show breakdown if CS involved
+  let surplusNote = '';
+  if(surplus>0){
+    surplusNote = `Saving ${fmt(surplus,cur)}/month = ${fmt(surplus*12,cur)}/year.`;
+    if(csReceivedM>0) surplusNote += ` Includes ${fmt(csReceivedM,cur)}/mo child support received.`;
+    if(csM>0) surplusNote += ` After paying ${fmt(csM,cur)}/mo child support.`;
+  } else {
+    surplusNote = `Shortfall of ${fmt(Math.abs(surplus),cur)}/mo.`;
+    if(csM>0) surplusNote += ` Paying ${fmt(csM,cur)}/mo child support is a factor.`;
+  }
+  $('surplusNote').textContent = surplusNote;
   $('taxTitle').textContent = `Tax Summary — ${countryKey.toUpperCase()} 2024`;
-  $('taxRows').innerHTML = `<div class="detail-row"><span class="dr-label">Total Gross</span><span class="dr-value">${fmt(totalGross,cur)}</span></div><div class="detail-row"><span class="dr-label">Total Tax + Contributions</span><span class="dr-value neg">${fmt(totalTax,cur)}</span></div>${benefits>0?`<div class="detail-row"><span class="dr-label">Govt Benefits Received</span><span class="dr-value pos">+${fmt(benefits,cur)}</span></div>`:''}<div class="detail-row dr-divider"><span class="dr-label" style="color:var(--text)">Annual Net</span><span class="dr-value bold">${fmt(netAnnual,cur)}</span></div>`;
+  $('taxRows').innerHTML = `
+  <div class="detail-row"><span class="dr-label">Total Gross</span><span class="dr-value">${fmt(totalGross,cur)}</span></div>
+  <div class="detail-row"><span class="dr-label">Total Tax + Contributions</span><span class="dr-value neg">−${fmt(totalTax,cur)}</span></div>
+  ${benefits>0?`<div class="detail-row"><span class="dr-label">Govt Benefits Received</span><span class="dr-value pos">+${fmt(benefits,cur)}</span></div>`:''}
+  ${csReceived>0?`<div class="detail-row"><span class="dr-label">Child Support Received</span><span class="dr-value pos">+${fmt(csReceived,cur)}/yr</span></div>`:''}
+  ${cs>0?`<div class="detail-row"><span class="dr-label">Child Support Paid</span><span class="dr-value neg">−${fmt(cs,cur)}/yr</span></div>`:''}
+  <div class="detail-row dr-divider"><span class="dr-label" style="color:var(--text)">Annual Net (after all)</span><span class="dr-value bold">${fmt(netAnnual + csReceived - cs, cur)}</span></div>
+`;
   $('dataFootnote').textContent=`${c.name} 2024 tax rates. Cost of living: Numbeo & national statistics 2024.`;
   $('results').classList.add('visible');
   setTimeout(()=>$('results').scrollIntoView({behavior:'smooth',block:'start'}),100);
