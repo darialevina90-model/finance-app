@@ -4,5 +4,5 @@
       "maxDuration": 30
     }
   },
-  "buildCommand": "node -e \"const fs=require('fs');const sw=fs.readFileSync('sw.js','utf8');fs.writeFileSync('sw.js',sw.replace('self.CACHE_VERSION || Date.now()','\\\"'+process.env.VERCEL_GIT_COMMIT_SHA+'\\\"'));console.log('SW cache version injected:', process.env.VERCEL_GIT_COMMIT_SHA);\""
+  "buildCommand": "node build.js"
 }
