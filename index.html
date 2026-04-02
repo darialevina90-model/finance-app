@@ -232,12 +232,7 @@
             Hi! I can help you figure out if a salary is enough to live comfortably in the UK, US, Canada, Germany, France, or Israel — including taxes, family situation, and real cost of living.<br/><br/>
             Just tell me your situation. For example: <em>"I earn £65,000 in London, married with 2 kids"</em> or <em>"Is $90k enough to live in New York as a single person?"</em>
           </div>
-          <div class="quick-replies">
-            <div class="qr-chip" onclick="sendQuick('Is £60,000 enough to live in London?')">London on £60k?</div>
-            <div class="qr-chip" onclick="sendQuick('Can a family of 4 afford Tel Aviv on ₪400,000?')">Family in Tel Aviv?</div>
-            <div class="qr-chip" onclick="sendQuick('Compare $100k in New York vs California')">NY vs California?</div>
-            <div class="qr-chip" onclick="sendQuick('Is €70,000 good in Berlin for a single person?')">Berlin on €70k?</div>
-          </div>
+  
         </div>
       </div>
     </div>
@@ -471,12 +466,7 @@ function restartChat() {
           Hi! I can help you figure out if a salary is enough to live comfortably in the UK, US, Canada, Germany, France, or Israel — including taxes, family situation, and real cost of living.<br/><br/>
           Just tell me your situation. For example: <em>"I earn £65,000 in London, married with 2 kids"</em> or <em>"Is $90k enough to live in New York as a single person?"</em>
         </div>
-        <div class="quick-replies">
-          <div class="qr-chip" onclick="sendQuick('Is £60,000 enough to live in London?')">London on £60k?</div>
-          <div class="qr-chip" onclick="sendQuick('Can a family of 4 afford Tel Aviv on ₪400,000?')">Family in Tel Aviv?</div>
-          <div class="qr-chip" onclick="sendQuick('Compare $100k in New York vs California')">NY vs California?</div>
-          <div class="qr-chip" onclick="sendQuick('Is €70,000 good in Berlin for a single person?')">Berlin on €70k?</div>
-        </div>
+
       </div>
     </div>`;
 }
@@ -664,12 +654,7 @@ RULES:
 
         addMessage('ai', explanation, {
           resultData: calcResult,
-          quickReplies: [
-            `How about outside the city center?`,
-            `Compare this with another city`,
-            `What if I earned ${cur}${Math.round((parsed.salary||0)*1.3).toLocaleString()} instead?`,
-            `What salary would I need to be comfortable?`
-          ]
+
         });
       } else {
         addMessage('ai', "I have your details but couldn't match the region. Could you clarify the city or region?");
