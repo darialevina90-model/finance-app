@@ -19,7 +19,6 @@
   <meta name="apple-mobile-web-app-title" content="AffordIt"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -480,7 +479,8 @@ CRITICAL RULES:
 1. You NEVER perform calculations yourself. The app calculates everything.
 2. You ONLY collect inputs and explain results given back to you.
 3. You NEVER invent or guess any financial numbers.
-4. If the user gives a salary in a foreign currency (e.g. "$165k in Tel Aviv"), accept it as-is and record the currency — the app will convert it.
+4. Accept salaries in ANY currency — record exactly what the user says. The app converts automatically.
+5. When salary has MIXED currencies (e.g. "30,000 NIS salary and $4,500 child support"), record each with its own currency field.
 
 COUNTRIES & LOCAL CURRENCIES:
 - uk → GBP (England/Wales, Scotland)
@@ -492,26 +492,33 @@ COUNTRIES & LOCAL CURRENCIES:
 
 REQUIRED INFO:
 1. Country and region/city
-2. Salary amount AND currency (e.g. 165000 USD, or 300000 ILS)
+2. Salary amount AND currency (e.g. 30000 ILS, or 60000 GBP)
 3. Marital status: single / married / divorced
 4. Number of children (0–4+)
 5. IF married: spouse salary amount and currency (default 0)
-6. IF divorced AND kids > 0: child support PAID per year (money they pay out — default 0)
-7. IF divorced AND kids > 0: child support RECEIVED per year (money they receive — default 0)
+6. IF divorced AND kids > 0: child support PAID per year + its currency (default 0)
+7. IF divorced AND kids > 0: child support RECEIVED per year + its currency (default 0)
    NOTE: If divorced with 0 kids, SKIP child support questions entirely.
+
+COMPARE MODE — VERY IMPORTANT:
+- If user asks to COMPARE two locations (e.g. "Haifa vs Tel Aviv", "London vs Berlin"), collect info ONCE (single salary/family situation) then return TWO separate JSON objects back to back, one per location.
+- Both objects use the same salary and family info, just different country/region.
+- Wrap both in an array: [{ first result }, { second result }]
 
 CONVERSATION RULES:
 - Ask ONE question at a time — never repeat
 - Be warm, concise — no long paragraphs
-- If salary currency differs from local currency, state: "I'll convert [X currency] to [local currency] using today's rate for the calculation."
+- For compare requests: confirm you understood both locations, then collect salary/family info once
 - NEVER ask child support questions if kids = 0
-- Collect all required info before returning JSON
+- For mixed currencies: record each amount with its specific currency, don't convert mentally
 
-WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (nothing before or after):
+WHEN YOU HAVE ALL INFO — respond with ONLY JSON (nothing before or after):
+
+Single location:
 {
   "type": "result",
   "country": "uk|usa|canada|germany|france|israel",
-  "region": "exact region name from the list above",
+  "region": "exact region name",
   "salaryAmount": 60000,
   "salaryCurrency": "GBP",
   "spouseSalaryAmount": 0,
@@ -520,10 +527,18 @@ WHEN YOU HAVE ALL INFO — respond with ONLY this JSON (nothing before or after)
   "kids": 0,
   "jointFiling": true,
   "childSupport": 0,
+  "childSupportCurrency": "GBP",
   "childSupportReceived": 0,
+  "childSupportReceivedCurrency": "GBP",
   "cityType": "city",
-  "summary": "One sentence only — acknowledge what you collected. Zero numbers — app calculates those."
+  "summary": "One sentence only — zero numbers — app calculates those."
 }
+
+Compare two locations — return array:
+[
+  { ...same fields as above for location 1... },
+  { ...same fields as above for location 2... }
+]
 
 If you need more info, respond conversationally only.`;
 
@@ -660,27 +675,68 @@ async function sendMessage() {
 
     removeTyping();
 
-    // Try to extract JSON from anywhere in the reply
+    // Try to extract JSON from reply — handles single object OR array (compare mode)
     let parsed = null;
-    const jsonMatch = reply.match(/\{[\s\S]*"type"\s*:\s*"result"[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        parsed = JSON.parse(jsonMatch[0]);
-      } catch(e) {
-        console.error('JSON parse error:', e);
-        console.log('Raw reply:', reply);
+    // Try array first (compare mode)
+    const arrayMatch = reply.match(/\[[\s\S]*"type"\s*:\s*"result"[\s\S]*\]/);
+    if (arrayMatch) {
+      try { parsed = JSON.parse(arrayMatch[0]); } catch(e) { console.error('Array parse error:', e); }
+    }
+    // Try single object
+    if (!parsed) {
+      const objMatch = reply.match(/\{[\s\S]*"type"\s*:\s*"result"[\s\S]*\}/);
+      if (objMatch) {
+        try { parsed = JSON.parse(objMatch[0]); } catch(e) { console.error('JSON parse error:', e); }
       }
     }
 
     if (parsed) {
-      // Normalize currency BEFORE calculation
-      const normalized = normalizeCurrency(parsed);
+      // Handle ARRAY response = compare mode
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+
+      if (items.length === 2) {
+        // Compare mode — calculate both and show side by side
+        const results = items.map(p => {
+          const norm = normalizeCurrencyFull(p);
+          const calc = runCalculation(norm);
+          return { norm, calc };
+        });
+
+        if (results[0].calc && results[1].calc) {
+          const cur0 = COUNTRIES[items[0].country]?.currency || '₪';
+          const cur1 = COUNTRIES[items[1].country]?.currency || '₪';
+
+          // Switch to calculator tab and show compare panel
+          document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.screen==='calc'));
+          document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id==='screen-calc'));
+
+          // Store both as compare slots
+          compareSlots = [
+            { ...results[0].calc, region: results[0].norm.region||items[0].region, grossLabel: `${cur0}${Math.round((results[0].norm.salary||0)/12).toLocaleString()}/mo gross` },
+            { ...results[1].calc, region: results[1].norm.region||items[1].region, grossLabel: `${cur1}${Math.round((results[1].norm.salary||0)/12).toLocaleString()}/mo gross` },
+          ];
+          renderCompare();
+          $('comparePanel').style.display = 'block';
+
+          addMessage('ai', `Here's the comparison between ${items[0].region} and ${items[1].region}. Check the Calculator tab to see the full side-by-side breakdown!`);
+        } else {
+          addMessage('ai', "I got the details but had trouble calculating one of the locations. Could you confirm the regions?");
+        }
+        isThinking = false;
+        $('sendBtn').disabled = false;
+        $('chatInput').focus();
+        return;
+      }
+
+      // Single result — normal flow
+      const singleParsed = items[0];
+      const normalized = normalizeCurrencyFull(singleParsed);
       const calcResult = runCalculation(normalized);
-      // Pass normalized so explanation knows original + converted values
       normalized._fxInfo = normalized.salaryRate
         ? `${normalized.salaryOriginalAmount.toLocaleString()} ${normalized.salaryOriginalCurrency} → ${normalized.salary.toLocaleString()} ${normalized.localCurrency} (rate: 1 ${normalized.salaryOriginalCurrency} = ${normalized.salaryRate.toFixed(2)} ${normalized.localCurrency})`
         : null;
-      const cur = COUNTRIES[parsed.country]?.currency || '$';
+      const cur = COUNTRIES[singleParsed.country]?.currency || '$';
+      const parsed = singleParsed;
       if (calcResult) {
         // Feed results BACK to GPT so it explains real numbers, not hallucinated ones
         const explainRes = await fetch('/api/chat', {
@@ -951,24 +1007,51 @@ function convertCurrency(amount, from, to) {
 }
 
 function normalizeCurrency(parsed) {
-  const target = LOCAL_CURRENCY[parsed.country] || 'USD';
-  const salaryCur   = (parsed.salaryCurrency || target).toUpperCase();
-  const spouseCur   = (parsed.spouseSalaryCurrency || target).toUpperCase();
-  const salaryAmt   = parsed.salaryAmount ?? parsed.salary ?? 0;
-  const spouseAmt   = parsed.spouseSalaryAmount ?? parsed.spouseSalary ?? 0;
+  return normalizeCurrencyFull(parsed);
+}
 
+// Full normalization — handles salary, spouse, AND child support in different currencies
+function normalizeCurrencyFull(parsed) {
+  const target = LOCAL_CURRENCY[parsed.country] || 'USD';
+
+  // Salary
+  const salaryCur = (parsed.salaryCurrency || target).toUpperCase();
+  const salaryAmt = parsed.salaryAmount ?? parsed.salary ?? 0;
   const { converted: salaryLocal, rate: salaryRate } = convertCurrency(salaryAmt, salaryCur, target);
-  const { converted: spouseLocal }                   = convertCurrency(spouseAmt, spouseCur, target);
+
+  // Spouse salary
+  const spouseCur = (parsed.spouseSalaryCurrency || target).toUpperCase();
+  const spouseAmt = parsed.spouseSalaryAmount ?? parsed.spouseSalary ?? 0;
+  const { converted: spouseLocal } = convertCurrency(spouseAmt, spouseCur, target);
+
+  // Child support RECEIVED — may be in different currency (e.g. $4,500 USD received in Israel)
+  const csRecCur = (parsed.childSupportReceivedCurrency || target).toUpperCase();
+  const csRecAmt = parsed.childSupportReceived || 0;
+  const { converted: csRecLocal } = convertCurrency(csRecAmt, csRecCur, target);
+
+  // Child support PAID
+  const csPaidCur = (parsed.childSupportCurrency || target).toUpperCase();
+  const csPaidAmt = parsed.childSupport || 0;
+  const { converted: csPaidLocal } = convertCurrency(csPaidAmt, csPaidCur, target);
+
+  // Build FX info string for display
+  const fxParts = [];
+  if (salaryCur !== target) fxParts.push(`salary: ${salaryAmt.toLocaleString()} ${salaryCur} → ${Math.round(salaryLocal).toLocaleString()} ${target}`);
+  if (csRecCur !== target && csRecAmt > 0) fxParts.push(`child support: ${csRecAmt.toLocaleString()} ${csRecCur} → ${Math.round(csRecLocal).toLocaleString()} ${target}`);
 
   return {
     ...parsed,
     salary: Math.round(salaryLocal),
     spouseSalary: Math.round(spouseLocal),
+    childSupportReceived: Math.round(csRecLocal),
+    childSupport: Math.round(csPaidLocal),
     // preserve originals for display
     salaryOriginalAmount: salaryAmt,
     salaryOriginalCurrency: salaryCur,
     salaryRate: salaryCur !== target ? salaryRate : null,
     localCurrency: target,
+    region: parsed.region,
+    _fxParts: fxParts,
   };
 }
 
@@ -1665,5 +1748,6 @@ window.addEventListener('DOMContentLoaded', () => {
   setTimeout(loadFromURLParams, 200);
 });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
