@@ -500,10 +500,15 @@ REQUIRED INFO:
 7. IF divorced AND kids > 0: child support RECEIVED per year + its currency (default 0)
    NOTE: If divorced with 0 kids, SKIP child support questions entirely.
 
-COMPARE MODE — VERY IMPORTANT:
-- If user asks to COMPARE two locations (e.g. "Haifa vs Tel Aviv", "London vs Berlin"), collect info ONCE (single salary/family situation) then return TWO separate JSON objects back to back, one per location.
-- Both objects use the same salary and family info, just different country/region.
-- Wrap both in an array: [{ first result }, { second result }]
+COMPARE MODE — CRITICAL:
+- If user asks to COMPARE two locations (e.g. "Haifa vs Tel Aviv", "London vs Berlin"), collect salary/family info ONCE, then return EXACTLY this format — a single JSON array, nothing else:
+[
+  { "type": "result", "country": "israel", "region": "Tel Aviv District", ...all other fields... },
+  { "type": "result", "country": "israel", "region": "Haifa District", ...all other fields... }
+]
+- NO text before the array, NO text after the array, NO separate code blocks, NO "Tel Aviv:" labels
+- Both objects share the same salary/family data, only region differs
+- Output the ENTIRE array as one single JSON structure
 
 CONVERSATION RULES:
 - Ask ONE question at a time — never repeat
@@ -675,19 +680,39 @@ async function sendMessage() {
 
     removeTyping();
 
-    // Try to extract JSON from reply — handles single object OR array (compare mode)
+    // Extract JSON — handles: single object, clean array, OR multiple separate blocks
     let parsed = null;
-    // Try array first (compare mode)
-    const arrayMatch = reply.match(/\[[\s\S]*"type"\s*:\s*"result"[\s\S]*\]/);
+
+    // Strip markdown code fences
+    const cleanReply = reply.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+
+    // Try clean array first
+    const arrayMatch = cleanReply.match(/\[[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\]/);
     if (arrayMatch) {
-      try { parsed = JSON.parse(arrayMatch[0]); } catch(e) { console.error('Array parse error:', e); }
+      try { parsed = JSON.parse(arrayMatch[0]); } catch(e) {}
     }
+
     // Try single object
     if (!parsed) {
-      const objMatch = reply.match(/\{[\s\S]*"type"\s*:\s*"result"[\s\S]*\}/);
+      const objMatch = cleanReply.match(/\{[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\}/);
       if (objMatch) {
-        try { parsed = JSON.parse(objMatch[0]); } catch(e) { console.error('JSON parse error:', e); }
+        try { parsed = JSON.parse(objMatch[0]); } catch(e) {}
       }
+    }
+
+    // Last resort: extract ALL separate JSON objects and combine into array
+    if (!parsed) {
+      const allObjs = [];
+      const regex = /\{[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\}/g;
+      let match;
+      while ((match = regex.exec(cleanReply)) !== null) {
+        try {
+          const obj = JSON.parse(match[0]);
+          if (obj.type === 'result') allObjs.push(obj);
+        } catch(e) {}
+      }
+      if (allObjs.length === 1) parsed = allObjs[0];
+      if (allObjs.length >= 2) parsed = allObjs; // treat as compare array
     }
 
     if (parsed) {
