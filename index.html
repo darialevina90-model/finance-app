@@ -3,13 +3,23 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Can You Afford to Live There?</title>
+  <title>Can You Afford to Live There? — AffordIt</title>
+  <meta name="description" content="See your real take-home pay vs cost of living across 6 countries. Includes taxes, family situation, and 2024 data."/>
+  <!-- Open Graph — rich preview when sharing link -->
+  <meta property="og:title" content="AffordIt — Can You Afford to Live There?"/>
+  <meta property="og:description" content="Real take-home pay vs cost of living. 6 countries, 2024 tax data, family-aware."/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:image" content="icon-512.png"/>
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:title" content="AffordIt — Salary vs Cost of Living"/>
+  <meta name="twitter:description" content="See if your salary is actually enough. 6 countries, real taxes, family situations."/>
   <link rel="manifest" href="manifest.json"/>
   <meta name="theme-color" content="#0f0e0c"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="AffordIt"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -201,6 +211,46 @@
     .cs-callout { background:var(--red-dim); border:1px solid rgba(224,112,96,0.25); border-radius:8px; padding:12px 14px; margin-top:10px; font-size:13px; color:var(--text-mid); line-height:1.5; }
     .cs-callout strong { color:var(--red); }
     .footnote { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-dim); text-align:center; margin-top:32px; }
+
+    /* Screenshot mode — disable animations for clean capture */
+    .screenshot-mode, .screenshot-mode * {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    /* ── COMPARE MODE ── */
+    .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+    @media(max-width:640px){ .compare-grid { grid-template-columns:1fr; } }
+    .compare-slot { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
+    .compare-slot-title { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.15em; color:var(--gold); text-transform:uppercase; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+    .compare-remove { cursor:pointer; color:var(--text-dim); font-size:14px; transition:color 0.2s; }
+    .compare-remove:hover { color:var(--red); }
+    .compare-winner { background:var(--green-dim); border-color:rgba(106,191,138,0.3) !important; }
+    .compare-winner .compare-slot-title { color:var(--green); }
+
+    /* ── CUSTOM COSTS ── */
+    .custom-costs-toggle { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; gap:8px; margin-top:16px; padding:10px 0; border-top:1px solid var(--border); transition:color 0.2s; }
+    .custom-costs-toggle:hover { color:var(--gold); }
+    .custom-costs-toggle::before { content:'▶'; font-size:8px; transition:transform 0.2s; }
+    .custom-costs-toggle.open::before { transform:rotate(90deg); }
+    .custom-costs-panel { display:none; margin-top:14px; }
+    .custom-costs-panel.visible { display:block; animation:fadeUp 0.2s ease both; }
+    .cost-input-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); gap:12px; }
+    .cost-input-row:last-child { border-bottom:none; }
+    .cost-input-label { font-size:13px; color:var(--text-mid); flex:1; }
+    .cost-input-field { display:flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden; height:36px; width:130px; flex-shrink:0; }
+    .cost-input-field:focus-within { border-color:var(--gold); }
+    .cost-input-field span { padding:0 8px; font-family:'DM Mono',monospace; font-size:11px; color:var(--gold); background:var(--gold-dim); height:36px; display:flex; align-items:center; border-right:1px solid var(--border); flex-shrink:0; }
+    .cost-input-field input { background:transparent; border:none; outline:none; padding:0 8px; height:36px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text); width:100%; }
+    .cost-input-field input::-webkit-inner-spin-button { -webkit-appearance:none; }
+    .reset-costs-btn { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); background:transparent; border:1px solid var(--border); border-radius:16px; padding:5px 12px; cursor:pointer; margin-top:10px; transition:all 0.2s; }
+    .reset-costs-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+    /* ── SHARE BUTTON ── */
+    .share-btn { display:flex; align-items:center; gap:8px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); background:transparent; border:1px solid var(--border); border-radius:20px; padding:8px 16px; cursor:pointer; transition:all 0.2s; margin-top:16px; }
+    .share-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .share-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--gold); border-radius:10px; padding:12px 20px; font-family:'DM Mono',monospace; font-size:12px; color:var(--gold); z-index:999; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+    .share-toast.visible { opacity:1; }
   </style>
 </head>
 <body>
@@ -343,7 +393,7 @@
       </div>
     </div>
 
-    <button class="calc-btn" onclick="calculate()">Calculate Affordability →</button>
+    <button class="calc-btn" id="calcBtn" onclick="calculate();this.style.boxShadow='none'">Calculate Affordability →</button>
 
     <div class="results" id="results" style="margin-top:28px">
       <div class="verdict-banner" id="verdictBanner">
@@ -361,7 +411,16 @@
       </div>
       <div class="detail-grid">
         <div class="detail-card"><div class="detail-title" id="taxTitle">Tax Breakdown</div><div id="taxRows"></div></div>
-        <div class="detail-card"><div class="detail-title">Monthly Cost of Living</div><div id="colRows"></div><div id="csCallout"></div></div>
+        <div class="detail-card">
+        <div class="detail-title">Monthly Cost of Living</div>
+        <div id="colRows"></div>
+        <div id="csCallout"></div>
+        <div class="custom-costs-toggle" id="customCostsToggle" onclick="toggleCustomCosts()">Adjust my own costs</div>
+        <div class="custom-costs-panel" id="customCostsPanel">
+          <div id="customCostInputs"></div>
+          <button class="reset-costs-btn" onclick="resetCustomCosts()">↺ Reset to estimates</button>
+        </div>
+      </div>
       </div>
       <div class="surplus-section">
         <div class="surplus-title">How far does your income go?</div>
@@ -372,10 +431,28 @@
         <p class="surplus-note" id="surplusNote"></p>
       </div>
       <p class="footnote" id="dataFootnote"></p>
+
+    <!-- Share + Compare buttons -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+      <button class="share-btn" onclick="shareScreenshot()">📸 Share as image</button>
+      <button class="share-btn" onclick="shareLink()">🔗 Copy link</button>
+      <button class="share-btn" onclick="addToCompare()">⚡ Compare location</button>
+    </div>
+
+    <!-- Compare panel -->
+    <div id="comparePanel" style="display:none;margin-top:32px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;color:var(--gold);text-transform:uppercase;margin-bottom:16px">Side-by-Side Comparison</div>
+      <div class="compare-grid" id="compareGrid"></div>
+      <button class="reset-costs-btn" onclick="clearCompare()">✕ Clear comparison</button>
+    </div>
     </div>
   </div>
 </div>
 
+<!-- Share toast -->
+<div class="share-toast" id="shareToast">🔗 Link copied to clipboard!</div>
+
+<!-- Custom costs toggle in calculator - injected dynamically -->
 <script>
 // ══════════════════════════════════════════════════════════════════════════
 // NAV
@@ -622,7 +699,8 @@ RULES:
 - If fxConversion is provided, mention it naturally (e.g. "After converting your USD salary to NIS...")
 - Highlight the key insight (surplus or shortfall)
 - Mention child support received/paid if non-zero
-- End with one encouraging or practical tip`
+- End with: "If our cost estimates don't match your reality, switch to the Calculator tab to adjust them."
+- Never say more than 4 sentences total`
               },
               {
                 role: 'user',
@@ -968,6 +1046,14 @@ function toggleCity(type) {
   cityType = type;
   $('btnCity').classList.toggle('active', type === 'city');
   $('btnSuburb').classList.toggle('active', type === 'suburb');
+  // Reset custom costs — city vs suburb have different base estimates
+  customCosts = null;
+  lastColData = null;
+  const panel = $('customCostsPanel');
+  const toggle = $('customCostsToggle');
+  if (panel) panel.classList.remove('visible');
+  if (toggle) toggle.classList.remove('open');
+  if ($('customCostInputs')) $('customCostInputs').innerHTML = '';
   calculate();
 }
 
@@ -978,6 +1064,14 @@ function updateRegions() {
   $('csCurrencySymbol').textContent = c.currency;
   $('csReceivedCurrencySymbol').textContent = c.currency;
   $('region').innerHTML = c.regions.map(r => `<option value="${r}">${r}</option>`).join('');
+  // Reset custom costs when location changes — defaults no longer apply
+  customCosts = null;
+  lastColData = null;
+  const panel = $('customCostsPanel');
+  const toggle = $('customCostsToggle');
+  if (panel) panel.classList.remove('visible');
+  if (toggle) toggle.classList.remove('open');
+  if ($('customCostInputs')) $('customCostInputs').innerHTML = '';
 }
 
 $('jointTax').addEventListener('change', () => {
@@ -1003,8 +1097,15 @@ function calculate() {
 
   const baseCol = c.col[region][cityType];
   const kidsAdd = c.kidsColAdder(numKids);
+  // Use custom costs if set, otherwise use defaults
   const colData = {};
-  for (const k in baseCol) colData[k] = baseCol[k] + (kidsAdd[k] || 0);
+  for (const k in baseCol) {
+    colData[k] = customCosts && customCosts[k] !== undefined
+      ? customCosts[k]
+      : baseCol[k] + (kidsAdd[k] || 0);
+  }
+  // Build custom cost inputs (only when panel exists)
+  if ($('customCostInputs') && !customCosts) buildCustomCostInputs({...baseCol, ...Object.fromEntries(Object.keys(baseCol).map(k=>[k,baseCol[k]+(kidsAdd[k]||0)]))}, cur);
   const colBase    = Object.values(colData).reduce((a,b) => a+b, 0);
   const csM        = cs / 12;
   const csReceivedM= csReceived / 12;
@@ -1109,10 +1210,460 @@ function calculate() {
   $('dataFootnote').textContent=`${c.name} 2024 tax rates. Cost of living: Numbeo & national statistics 2024.`;
   $('results').classList.add('visible');
   setTimeout(()=>$('results').scrollIntoView({behavior:'smooth',block:'start'}),100);
+
+  // Store for compare mode
+  window.lastManualResult = {
+    region, currency:cur, netMonthly, totalIncome:totalIncomM,
+    colMonthly:colTotal, surplus, taxPct:effRate,
+    totalGross, totalTax, netAnnual,
+    grossLabel:`${fmt(totalGross/12,cur)}/mo gross · ${maritalStatus}${numKids>0?' · '+numKids+' kid'+(numKids>1?'s':''):''}`
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CUSTOM COSTS
+// ══════════════════════════════════════════════════════════════════════════
+let customCosts = null; // null = use defaults
+let lastColData = null; // store last calculated col data for reset
+
+function toggleCustomCosts() {
+  const panel = $('customCostsPanel');
+  const toggle = $('customCostsToggle');
+  panel.classList.toggle('visible');
+  toggle.classList.toggle('open');
+}
+
+function buildCustomCostInputs(colData, cur) {
+  lastColData = colData;
+  const labels = {rent:'Rent (1-bed)',groceries:'Groceries',transport:'Transport',utilities:'Utilities',dining:'Dining & Lifestyle',other:'Other'};
+  const container = $('customCostInputs');
+  container.innerHTML = Object.entries(colData).map(([k,v]) => `
+    <div class="cost-input-row">
+      <span class="cost-input-label">${labels[k]||k}</span>
+      <div class="cost-input-field">
+        <span>${cur}</span>
+        <input type="number" id="custom_${k}" value="${Math.round(v)}" min="0" step="10" oninput="applyCustomCosts()"/>
+      </div>
+    </div>
+  `).join('');
+}
+
+function applyCustomCosts() {
+  if (!lastColData) return;
+  customCosts = {};
+  for (const k of Object.keys(lastColData)) {
+    const el = $('custom_' + k);
+    customCosts[k] = el ? (parseFloat(el.value)||0) : lastColData[k];
+  }
+  calculate(); // auto-recalculate when custom costs change
+}
+
+function resetCustomCosts() {
+  customCosts = null;
+  if (lastColData) {
+    for (const [k,v] of Object.entries(lastColData)) {
+      const el = $('custom_' + k);
+      if (el) el.value = Math.round(v);
+    }
+    calculate(); // recalculate since we're resetting costs to defaults
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// COMPARE MODE
+// ══════════════════════════════════════════════════════════════════════════
+let compareSlots = []; // max 2 slots
+
+function addToCompare() {
+  const res = window.lastManualResult;
+  if (!res) return;
+
+  if (compareSlots.length >= 2) {
+    compareSlots.shift(); // remove oldest
+  }
+  compareSlots.push({ ...res });
+  renderCompare();
+  $('comparePanel').style.display = 'block';
+  $('comparePanel').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function clearCompare() {
+  compareSlots = [];
+  $('comparePanel').style.display = 'none';
+  $('compareGrid').innerHTML = '';
+}
+
+function renderCompare() {
+  const grid = $('compareGrid');
+  if (compareSlots.length === 0) { grid.innerHTML=''; return; }
+
+  // Find winner (highest surplus)
+  const winnerIdx = compareSlots.length === 2
+    ? (compareSlots[0].surplus >= compareSlots[1].surplus ? 0 : 1)
+    : 0;
+
+  grid.innerHTML = compareSlots.map((r, i) => {
+    const isWinner = compareSlots.length === 2 && i === winnerIdx;
+    const cur = r.currency;
+    const surplusStr = r.surplus >= 0
+      ? `<span style="color:var(--green)">+${fmt(r.surplus,cur)}/mo</span>`
+      : `<span style="color:var(--red)">−${fmt(Math.abs(r.surplus),cur)}/mo</span>`;
+
+    return `<div class="compare-slot ${isWinner ? 'compare-winner' : ''}">
+      <div class="compare-slot-title">
+        <span>${r.region} ${isWinner ? '🏆' : ''}</span>
+        <span class="compare-remove" onclick="removeCompareSlot(${i})">✕</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px">Net Monthly</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--green)">${fmt(r.totalIncome||r.netMonthly,cur)}</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px">Cost of Living</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--amber)">${fmt(r.colMonthly,cur)}</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px">Tax Rate</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--red)">${r.taxPct}%</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px">Surplus</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:1.1rem">${surplusStr}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:8px;font-family:'DM Mono',monospace">${r.grossLabel||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function removeCompareSlot(idx) {
+  compareSlots.splice(idx, 1);
+  renderCompare();
+  if (compareSlots.length === 0) $('comparePanel').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SHARE RESULT
+// ══════════════════════════════════════════════════════════════════════════
+function buildShareUrl() {
+  const params = new URLSearchParams({
+    country: $('country').value,
+    region:  $('region').value,
+    salary:  $('salary').value,
+    marital: maritalStatus,
+    kids:    numKids,
+    city:    cityType,
+    spouse:  $('spouseSalary')?.value || 0,
+    cs:      $('childSupport')?.value || 0,
+    csr:     $('childSupportReceived')?.value || 0
+  });
+  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? window.location.origin + window.location.pathname
+    : 'https://finance-app-beta-eight.vercel.app/';
+  return base + '?' + params.toString();
+}
+
+function shareLink() {
+  if (!window.lastParsed && !window.lastManualResult) { showToast('⚠️ Calculate first!'); return; }
+
+  // Encode full state as JSON in URL — guaranteed to restore correctly
+  const state = {
+    country:  $('country').value,
+    region:   $('region').value,
+    salary:   parseFloat($('salary').value) || 0,
+    marital:  maritalStatus,
+    kids:     numKids,
+    cityType: cityType,
+    spouseSalary:          parseFloat($('spouseSalary')?.value) || 0,
+    childSupport:          parseFloat($('childSupport')?.value) || 0,
+    childSupportReceived:  parseFloat($('childSupportReceived')?.value) || 0,
+    jointFiling: $('jointTax')?.checked !== false
+  };
+
+  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? window.location.origin + window.location.pathname
+    : 'https://finance-app-beta-eight.vercel.app/';
+
+  const url = base + '?data=' + encodeURIComponent(JSON.stringify(state));
+
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('🔗 Link copied!'))
+    .catch(() => showLinkModal(url));
+}
+
+function showLinkModal(url) {
+  const existing = document.getElementById('shareLinkModal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'shareLinkModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:28px;max-width:520px;width:100%">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--gold);text-transform:uppercase;margin-bottom:12px">Your Shareable Link</div>
+      <input id="shareUrlInput" value="${url}" readonly style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;margin-bottom:14px"/>
+      <div style="display:flex;gap:10px">
+        <button onclick="const i=document.getElementById('shareUrlInput');i.select();document.execCommand('copy');this.textContent='✅ Copied!';this.style.background='var(--green)'" style="flex:1;background:var(--gold);color:#0f0e0c;border:none;border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background 0.2s">Copy</button>
+        <button onclick="document.getElementById('shareLinkModal').remove()" style="flex:1;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => { const i = document.getElementById('shareUrlInput'); if(i){i.focus();i.select();} }, 150);
+}
+
+async function shareScreenshot() {
+  if (!window.lastManualResult) { showToast('⚠️ Calculate first!'); return; }
+
+  showToast('📸 Generating...');
+
+  // Build a compact offscreen summary card to capture
+  const r = window.lastManualResult;
+  const cur = r.currency;
+  const country = $('country').value;
+  const c = COUNTRIES[country];
+  const gross = parseFloat($('salary').value)||0;
+  const spouseGross = maritalStatus==='married'?(parseFloat($('spouseSalary')?.value)||0):0;
+  const totalGross = gross + spouseGross;
+
+  // Create compact card element
+  const card = document.createElement('div');
+  card.style.cssText = 'position:fixed;left:-9999px;top:0;width:640px;background:#0f0e0c;padding:32px;font-family:DM Sans,sans-serif;';
+  card.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;margin-bottom:8px">AffordIt · ${c?.name||''} 2024</div>
+      <div style="font-size:13px;color:#7a7670;font-family:DM Mono,monospace">${r.region} · ${maritalStatus}${numKids>0?' · '+numKids+' kid'+(numKids>1?'s':''):''} · ${cityType==='city'?'City center':'Outside center'}</div>
+    </div>
+
+    <div style="background:#1a1916;border:1px solid #2e2c29;border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.15em;color:#7a7670;text-transform:uppercase;margin-bottom:14px">Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
+          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Gross Monthly</div>
+          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#e8c97a">${fmt(totalGross/12,cur)}</div>
+        </div>
+        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
+          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Net Take-Home</div>
+          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#6abf8a">${fmt(r.netMonthly,cur)}</div>
+          <div style="font-size:10px;color:#7a7670;margin-top:3px">${r.taxPct}% tax rate</div>
+        </div>
+        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
+          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Cost of Living</div>
+          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#e8a84c">${fmt(r.colMonthly,cur)}</div>
+        </div>
+        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
+          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Monthly Surplus</div>
+          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:${r.surplus>=0?'#6abf8a':'#e07060'}">${r.surplus>=0?'+':'−'}${fmt(r.surplus,cur)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:${r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.1)':r.surplus>=0?'rgba(232,168,76,0.1)':'rgba(224,112,96,0.1)'};border:1px solid ${r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.3)':r.surplus>=0?'rgba(232,168,76,0.3)':'rgba(224,112,96,0.3)'};border-radius:10px;padding:16px;margin-bottom:20px">
+      <div style="font-family:DM Mono,monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;color:${r.surplus>r.netMonthly*0.2?'#6abf8a':r.surplus>=0?'#e8a84c':'#e07060'}">${r.surplus>r.netMonthly*0.2?'✅ Comfortable':r.surplus>=0?'⚠️ Tight but manageable':'❌ Not enough'}</div>
+      <div style="font-size:13px;color:#b0aa9e">${r.surplus>=0?'Monthly surplus of '+fmt(r.surplus,cur)+' after all costs.':'Shortfall of '+fmt(Math.abs(r.surplus),cur)+'/month.'}</div>
+    </div>
+
+    <div style="font-family:DM Mono,monospace;font-size:10px;color:#7a7670;text-align:center">finance-app-beta-eight.vercel.app · 2024 data</div>
+  `;
+
+  document.body.appendChild(card);
+
+  try {
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 80));
+
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#0f0e0c',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      width: 640,
+    });
+
+    document.body.removeChild(card);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const shareUrl = buildShareUrl();
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) { showToast('⚠️ Capture failed'); return; }
+      const file = new File([blob], 'affordit-result.png', { type: 'image/png' });
+
+      // Mobile: native share sheet (image + link)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'AffordIt', text: 'My affordability result: ' + shareUrl, files: [file] });
+          return;
+        } catch(e) { if (e.name === 'AbortError') return; }
+      }
+
+      // Desktop Chrome: try copying image to clipboard (Ctrl+V paste)
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          showToast('📋 Image copied! Paste with Ctrl+V anywhere.');
+          return;
+        } catch(e) {
+          console.log('Clipboard image blocked, showing modal instead:', e.message);
+        }
+      }
+
+      // Fallback: show modal with save + copy link
+      showScreenshotModal(dataUrl, shareUrl);
+    }, 'image/png');
+
+  } catch(e) {
+    if (document.body.contains(card)) document.body.removeChild(card);
+    console.error('Screenshot error:', e);
+    showToast('⚠️ Failed — use Copy Link instead');
+  }
+}
+
+
+function showScreenshotModal(dataUrl, shareUrl) {
+  const ex = document.getElementById('screenshotModal');
+  if (ex) ex.remove();
+
+  const ov = document.createElement('div');
+  ov.id = 'screenshotModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:600px;width:100%';
+
+  const title = document.createElement('div');
+  title.style.cssText = "font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.15em;color:var(--gold);text-transform:uppercase;margin-bottom:14px";
+  title.textContent = 'Your Result Screenshot';
+
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.style.cssText = 'width:100%;border-radius:8px;margin-bottom:16px;display:block';
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap';
+
+  // Save button
+  const saveBtn = document.createElement('a');
+  saveBtn.href = dataUrl;
+  saveBtn.download = 'affordit-result.png';
+  saveBtn.style.cssText = "flex:1;min-width:120px;background:var(--gold);color:#0f0e0c;border:none;border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;text-align:center;text-decoration:none";
+  saveBtn.textContent = '⬇ Save Image';
+
+  // Copy link button
+  const copyBtn = document.createElement('button');
+  copyBtn.style.cssText = "flex:1;min-width:120px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer";
+  copyBtn.textContent = '🔗 Copy Link';
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => { copyBtn.textContent = '✅ Copied!'; })
+      .catch(() => { copyBtn.textContent = shareUrl.substring(0, 30) + '...'; });
+  };
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = "flex:1;min-width:120px;background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer";
+  closeBtn.textContent = 'Close';
+  closeBtn.onclick = () => ov.remove();
+
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(copyBtn);
+  btnRow.appendChild(closeBtn);
+  inner.appendChild(title);
+  inner.appendChild(img);
+  inner.appendChild(btnRow);
+  ov.appendChild(inner);
+  document.body.appendChild(ov);
+}
+
+function showToast(msg) {
+  const t = $('shareToast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 3000);
+}
+
+// ── Load from URL params on page load ─────────────────────────────────────
+function loadFromURLParams() {
+  const params = new URLSearchParams(window.location.search);
+
+  // Support new ?data= format (full JSON state)
+  const dataParam = params.get('data');
+  if (dataParam) {
+    try {
+      const state = JSON.parse(decodeURIComponent(dataParam));
+      restoreFromState(state);
+      return;
+    } catch(e) {
+      console.error('Failed to parse shared state:', e);
+    }
+  }
+
+  // Legacy ?country= format fallback
+  if (!params.get('country')) return;
+  restoreFromState({
+    country:             params.get('country'),
+    region:              params.get('region'),
+    salary:              parseFloat(params.get('salary')) || 60000,
+    marital:             params.get('marital') || 'single',
+    kids:                parseInt(params.get('kids')) || 0,
+    cityType:            params.get('city') || 'city',
+    spouseSalary:        parseFloat(params.get('spouse')) || 0,
+    childSupport:        parseFloat(params.get('cs')) || 0,
+    childSupportReceived:parseFloat(params.get('csr')) || 0,
+  });
+}
+
+function restoreFromState(state) {
+  // Switch to calculator tab
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.screen === 'calc'));
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-calc'));
+
+  // Set country first, then wait for regions to populate
+  const countryEl = $('country');
+  if (countryEl && state.country) {
+    countryEl.value = state.country;
+    updateRegions();
+  }
+
+  setTimeout(() => {
+    // Region
+    if ($('region') && state.region) $('region').value = state.region;
+
+    // Salary
+    if ($('salary')) $('salary').value = state.salary || 60000;
+
+    // Family
+    setMarital(state.marital || 'single');
+    setKids(state.kids || 0);
+
+    // Spouse / child support
+    if ($('spouseSalary')) $('spouseSalary').value = state.spouseSalary || 0;
+    if ($('childSupport')) $('childSupport').value = state.childSupport || 0;
+    if ($('childSupportReceived')) $('childSupportReceived').value = state.childSupportReceived || 0;
+    if ($('jointTax') && state.jointFiling !== undefined) $('jointTax').checked = state.jointFiling;
+
+    // City type
+    const city = state.cityType || 'city';
+    cityType = city;
+    $('btnCity').classList.toggle('active', city === 'city');
+    $('btnSuburb').classList.toggle('active', city === 'suburb');
+
+    // Calculate and update title
+    calculate();
+
+    const cur = COUNTRIES[state.country]?.currency || '';
+    document.title = `AffordIt — ${cur}${Math.round(state.salary||0).toLocaleString()} in ${state.region||''}`;
+
+    setTimeout(() => showToast('📊 Shared result loaded!'), 400);
+  }, 300);
 }
 
 updateRegions();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// Load shared URL params after everything is initialized
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(loadFromURLParams, 200);
+});
 </script>
 </body>
 </html>
