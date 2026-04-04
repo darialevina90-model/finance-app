@@ -433,7 +433,6 @@
 
     <!-- Share + Compare buttons -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
-      <button class="share-btn" onclick="shareScreenshot()">📸 Share as image</button>
       <button class="share-btn" onclick="shareLink()">🔗 Copy link</button>
       <button class="share-btn" onclick="addToCompare()">⚡ Compare location</button>
     </div>
@@ -539,11 +538,14 @@ Single location:
   "summary": "One sentence only — zero numbers — app calculates those."
 }
 
-Compare two locations — return array:
-[
-  { ...same fields as above for location 1... },
-  { ...same fields as above for location 2... }
-]
+Compare two locations — return this EXACT structure, nothing else:
+{
+  "type": "compare",
+  "results": [
+    { "type": "result", "country": "israel", "region": "Tel Aviv District", "salaryAmount": 300000, "salaryCurrency": "ILS", "spouseSalaryAmount": 0, "spouseSalaryCurrency": "ILS", "marital": "single", "kids": 0, "jointFiling": true, "childSupport": 0, "childSupportCurrency": "ILS", "childSupportReceived": 0, "childSupportReceivedCurrency": "ILS", "cityType": "city", "summary": "one sentence" },
+    { "type": "result", "country": "israel", "region": "Haifa District", "salaryAmount": 300000, "salaryCurrency": "ILS", "spouseSalaryAmount": 0, "spouseSalaryCurrency": "ILS", "marital": "single", "kids": 0, "jointFiling": true, "childSupport": 0, "childSupportCurrency": "ILS", "childSupportReceived": 0, "childSupportReceivedCurrency": "ILS", "cityType": "city", "summary": "one sentence" }
+  ]
+}
 
 If you need more info, respond conversationally only.`;
 
@@ -680,44 +682,56 @@ async function sendMessage() {
 
     removeTyping();
 
-    // Extract JSON — handles: single object, clean array, OR multiple separate blocks
+    // Robust JSON extraction — supports single result, compare wrapper, or multiple blocks
     let parsed = null;
+    const cleanReply = reply.replace(/```json\s*/gi,'').replace(/```\s*/gi,'').trim();
 
-    // Strip markdown code fences
-    const cleanReply = reply.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-
-    // Try clean array first
-    const arrayMatch = cleanReply.match(/\[[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\]/);
-    if (arrayMatch) {
-      try { parsed = JSON.parse(arrayMatch[0]); } catch(e) {}
+    // Step 1: try to parse the outermost JSON structure
+    const outerMatch = cleanReply.match(/[\[\{][\s\S]*[\]\}]/);
+    if (outerMatch) {
+      try {
+        const outer = JSON.parse(outerMatch[0]);
+        // Option B: compare wrapper { type: "compare", results: [...] }
+        if (outer.type === 'compare' && Array.isArray(outer.results)) {
+          parsed = outer; // handled below
+        }
+        // Single result object
+        else if (outer.type === 'result') {
+          parsed = outer;
+        }
+        // Raw array of results
+        else if (Array.isArray(outer) && outer[0]?.type === 'result') {
+          parsed = { type: 'compare', results: outer };
+        }
+      } catch(e) {}
     }
 
-    // Try single object
+    // Step 2 (ChatGPT's suggestion): extract ALL JSON blocks as fallback
     if (!parsed) {
-      const objMatch = cleanReply.match(/\{[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\}/);
-      if (objMatch) {
-        try { parsed = JSON.parse(objMatch[0]); } catch(e) {}
+      function extractJSONBlocks(text) {
+        const blocks = [];
+        let depth = 0, start = -1;
+        for (let i = 0; i < text.length; i++) {
+          if (text[i] === '{') { if (depth === 0) start = i; depth++; }
+          else if (text[i] === '}') {
+            depth--;
+            if (depth === 0 && start !== -1) {
+              try { const obj = JSON.parse(text.slice(start, i+1)); blocks.push(obj); } catch(e) {}
+              start = -1;
+            }
+          }
+        }
+        return blocks;
       }
-    }
-
-    // Last resort: extract ALL separate JSON objects and combine into array
-    if (!parsed) {
-      const allObjs = [];
-      const regex = /\{[\s\S]*?"type"\s*:\s*"result"[\s\S]*?\}/g;
-      let match;
-      while ((match = regex.exec(cleanReply)) !== null) {
-        try {
-          const obj = JSON.parse(match[0]);
-          if (obj.type === 'result') allObjs.push(obj);
-        } catch(e) {}
-      }
-      if (allObjs.length === 1) parsed = allObjs[0];
-      if (allObjs.length >= 2) parsed = allObjs; // treat as compare array
+      const blocks = extractJSONBlocks(cleanReply).filter(b => b.type === 'result');
+      if (blocks.length === 1) parsed = blocks[0];
+      if (blocks.length >= 2) parsed = { type: 'compare', results: blocks };
     }
 
     if (parsed) {
-      // Handle ARRAY response = compare mode
-      const items = Array.isArray(parsed) ? parsed : [parsed];
+      // Handle compare wrapper { type: "compare", results: [...] }
+      const items = parsed.type === 'compare' ? parsed.results :
+                    Array.isArray(parsed) ? parsed : [parsed];
 
       if (items.length === 2) {
         // Compare mode — calculate both and show side by side
@@ -1520,109 +1534,99 @@ function showLinkModal(url) {
 }
 
 async function shareScreenshot() {
-  if (!window.lastManualResult) { showToast('⚠️ Calculate first!'); return; }
+  const target = document.getElementById('results');
 
-  showToast('📸 Generating...');
+  if (!target || !target.classList.contains('visible')) {
+    showToast('⚠️ Calculate first!');
+    return;
+  }
 
-  // Build a compact offscreen summary card to capture
-  const r = window.lastManualResult;
-  const cur = r.currency;
-  const country = $('country').value;
-  const c = COUNTRIES[country];
-  const gross = parseFloat($('salary').value)||0;
-  const spouseGross = maritalStatus==='married'?(parseFloat($('spouseSalary')?.value)||0):0;
-  const totalGross = gross + spouseGross;
-
-  // Create compact card element
-  const card = document.createElement('div');
-  card.style.cssText = 'position:fixed;left:-9999px;top:0;width:640px;background:#0f0e0c;padding:32px;font-family:DM Sans,sans-serif;';
-  card.innerHTML = `
-    <div style="margin-bottom:20px">
-      <div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;margin-bottom:8px">AffordIt · ${c?.name||''} 2024</div>
-      <div style="font-size:13px;color:#7a7670;font-family:DM Mono,monospace">${r.region} · ${maritalStatus}${numKids>0?' · '+numKids+' kid'+(numKids>1?'s':''):''} · ${cityType==='city'?'City center':'Outside center'}</div>
-    </div>
-
-    <div style="background:#1a1916;border:1px solid #2e2c29;border-radius:12px;padding:20px;margin-bottom:16px">
-      <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.15em;color:#7a7670;text-transform:uppercase;margin-bottom:14px">Summary</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
-          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Gross Monthly</div>
-          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#e8c97a">${fmt(totalGross/12,cur)}</div>
-        </div>
-        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
-          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Net Take-Home</div>
-          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#6abf8a">${fmt(r.netMonthly,cur)}</div>
-          <div style="font-size:10px;color:#7a7670;margin-top:3px">${r.taxPct}% tax rate</div>
-        </div>
-        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
-          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Cost of Living</div>
-          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:#e8a84c">${fmt(r.colMonthly,cur)}</div>
-        </div>
-        <div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px">
-          <div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Monthly Surplus</div>
-          <div style="font-family:DM Serif Display,serif;font-size:1.3rem;color:${r.surplus>=0?'#6abf8a':'#e07060'}">${r.surplus>=0?'+':'−'}${fmt(r.surplus,cur)}</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:${r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.1)':r.surplus>=0?'rgba(232,168,76,0.1)':'rgba(224,112,96,0.1)'};border:1px solid ${r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.3)':r.surplus>=0?'rgba(232,168,76,0.3)':'rgba(224,112,96,0.3)'};border-radius:10px;padding:16px;margin-bottom:20px">
-      <div style="font-family:DM Mono,monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;color:${r.surplus>r.netMonthly*0.2?'#6abf8a':r.surplus>=0?'#e8a84c':'#e07060'}">${r.surplus>r.netMonthly*0.2?'✅ Comfortable':r.surplus>=0?'⚠️ Tight but manageable':'❌ Not enough'}</div>
-      <div style="font-size:13px;color:#b0aa9e">${r.surplus>=0?'Monthly surplus of '+fmt(r.surplus,cur)+' after all costs.':'Shortfall of '+fmt(Math.abs(r.surplus),cur)+'/month.'}</div>
-    </div>
-
-    <div style="font-family:DM Mono,monospace;font-size:10px;color:#7a7670;text-align:center">finance-app-beta-eight.vercel.app · 2024 data</div>
-  `;
-
-  document.body.appendChild(card);
+  showToast('📸 Generating image...');
 
   try {
     await document.fonts.ready;
     await new Promise(r => setTimeout(r, 80));
 
+    // Build compact offscreen card to capture
+    const r = window.lastManualResult;
+    const cur = r ? r.currency : '?';
+    const country = $('country')?.value;
+    const c = COUNTRIES[country];
+    const gross = parseFloat($('salary')?.value)||0;
+    const spouseGross = maritalStatus==='married'?(parseFloat($('spouseSalary')?.value)||0):0;
+    const totalGross = gross + spouseGross;
+
+    const card = document.createElement('div');
+    card.style.cssText = 'position:fixed;left:-9999px;top:0;width:640px;background:#0f0e0c;padding:32px;font-family:sans-serif;';
+
+    if (r) {
+      card.innerHTML = '<div style="margin-bottom:20px">'
+        + '<div style="font-size:11px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;margin-bottom:8px">AffordIt · ' + (c?.name||'') + ' 2024</div>'
+        + '<div style="font-size:13px;color:#7a7670">' + (r.region||'') + ' · ' + maritalStatus + (numKids>0?' · '+numKids+' kid'+(numKids>1?'s':''):'') + ' · ' + (cityType==='city'?'City center':'Outside center') + '</div>'
+        + '</div>'
+        + '<div style="background:#1a1916;border:1px solid #2e2c29;border-radius:12px;padding:20px;margin-bottom:16px">'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+        + '<div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px"><div style="font-size:9px;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Gross Monthly</div><div style="font-size:1.3rem;color:#e8c97a">' + fmt(totalGross/12,cur) + '</div></div>'
+        + '<div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px"><div style="font-size:9px;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Net Take-Home</div><div style="font-size:1.3rem;color:#6abf8a">' + fmt(r.netMonthly,cur) + '</div><div style="font-size:10px;color:#7a7670;margin-top:3px">' + r.taxPct + '% tax rate</div></div>'
+        + '<div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px"><div style="font-size:9px;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Cost of Living</div><div style="font-size:1.3rem;color:#e8a84c">' + fmt(r.colMonthly,cur) + '</div></div>'
+        + '<div style="background:#242220;border:1px solid #2e2c29;border-radius:8px;padding:14px"><div style="font-size:9px;color:#7a7670;text-transform:uppercase;margin-bottom:6px">Monthly Surplus</div><div style="font-size:1.3rem;color:' + (r.surplus>=0?'#6abf8a':'#e07060') + '">' + (r.surplus>=0?'+':'−') + fmt(r.surplus,cur) + '</div></div>'
+        + '</div></div>'
+        + '<div style="background:' + (r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.1)':r.surplus>=0?'rgba(232,168,76,0.1)':'rgba(224,112,96,0.1)') + ';border:1px solid ' + (r.surplus>r.netMonthly*0.2?'rgba(106,191,138,0.3)':r.surplus>=0?'rgba(232,168,76,0.3)':'rgba(224,112,96,0.3)') + ';border-radius:10px;padding:16px;margin-bottom:20px">'
+        + '<div style="font-size:10px;text-transform:uppercase;margin-bottom:4px;color:' + (r.surplus>r.netMonthly*0.2?'#6abf8a':r.surplus>=0?'#e8a84c':'#e07060') + '">' + (r.surplus>r.netMonthly*0.2?'✅ Comfortable':r.surplus>=0?'⚠️ Tight but manageable':'❌ Not enough') + '</div>'
+        + '<div style="font-size:13px;color:#b0aa9e">' + (r.surplus>=0?'Monthly surplus of '+fmt(r.surplus,cur)+' after all costs.':'Shortfall of '+fmt(Math.abs(r.surplus),cur)+'/month.') + '</div>'
+        + '</div>'
+        + '<div style="font-size:10px;color:#7a7670;text-align:center">finance-app-beta-eight.vercel.app</div>';
+    } else {
+      card.innerHTML = '<div style="color:#f0ece4;font-size:14px">AffordIt Result</div>';
+    }
+
+    document.body.appendChild(card);
+    await new Promise(r => setTimeout(r, 50));
+
     const canvas = await html2canvas(card, {
-      backgroundColor: '#0f0e0c',
       scale: 2,
+      backgroundColor: '#0f0e0c',
       useCORS: true,
       logging: false,
-      width: 640,
+      width: 640
     });
 
     document.body.removeChild(card);
 
-    const dataUrl = canvas.toDataURL('image/png');
-    const shareUrl = buildShareUrl();
+    // Convert to blob
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('No blob generated');
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) { showToast('⚠️ Capture failed'); return; }
-      const file = new File([blob], 'affordit-result.png', { type: 'image/png' });
+    // Mobile: native share
+    const file = new File([blob], 'affordit-result.png', { type: 'image/png' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ title: 'AffordIt', text: buildShareUrl(), files: [file] });
+        return;
+      } catch(e) { if (e.name === 'AbortError') return; }
+    }
 
-      // Mobile: native share sheet (image + link)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ title: 'AffordIt', text: 'My affordability result: ' + shareUrl, files: [file] });
-          return;
-        } catch(e) { if (e.name === 'AbortError') return; }
+    // Desktop Chrome: copy to clipboard
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('📋 Image copied! Paste with Ctrl+V anywhere.');
+        return;
+      } catch(e) {
+        console.warn('Clipboard image failed:', e.message);
       }
+    }
 
-      // Desktop Chrome: try copying image to clipboard (Ctrl+V paste)
-      if (window.ClipboardItem && navigator.clipboard?.write) {
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          showToast('📋 Image copied! Paste with Ctrl+V anywhere.');
-          return;
-        } catch(e) {
-          console.log('Clipboard image blocked, showing modal instead:', e.message);
-        }
-      }
+    // Final fallback: download
+    const link = document.createElement('a');
+    link.download = 'affordit-result.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('📸 Image downloaded!');
 
-      // Fallback: show modal with save + copy link
-      showScreenshotModal(dataUrl, shareUrl);
-    }, 'image/png');
-
-  } catch(e) {
-    if (document.body.contains(card)) document.body.removeChild(card);
-    console.error('Screenshot error:', e);
-    showToast('⚠️ Failed — use Copy Link instead');
+  } catch(err) {
+    console.error('Screenshot error:', err);
+    showToast('⚠️ Screenshot failed — use Copy Link instead');
   }
 }
 
