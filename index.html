@@ -820,11 +820,11 @@ RULES:
           })
         });
         const explainData = await explainRes.json();
-        const explanation = explainData.choices?.[0]?.message?.content || parsed.summary;
+        const explanation = explainData.choices?.[0]?.message?.content || activeParsed.summary || 'Here are your results.';
 
         // Store last result for follow-up questions
         window.lastCalcResult = calcResult;
-        window.lastParsed = parsed;
+        window.lastParsed = activeParsed;
 
         addMessage('ai', explanation, {
           resultData: calcResult,
