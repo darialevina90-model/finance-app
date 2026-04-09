@@ -734,7 +734,7 @@ async function sendMessage() {
                     Array.isArray(parsed) ? parsed : [parsed];
 
       if (items.length === 2) {
-        // Compare mode — calculate both and show side by side
+        // Compare mode — show BOTH results directly in chat, no tab switching
         const results = items.map(p => {
           const norm = normalizeCurrencyFull(p);
           const calc = runCalculation(norm);
@@ -742,22 +742,52 @@ async function sendMessage() {
         });
 
         if (results[0].calc && results[1].calc) {
-          const cur0 = COUNTRIES[items[0].country]?.currency || '₪';
-          const cur1 = COUNTRIES[items[1].country]?.currency || '₪';
+          const r0 = results[0].calc;
+          const r1 = results[1].calc;
+          const winner = r0.surplus >= r1.surplus ? 0 : 1;
 
-          // Switch to calculator tab and show compare panel
-          document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.screen==='calc'));
-          document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id==='screen-calc'));
+          // Build comparison message
+          const compMsg = `Here's the comparison between ${items[0].region} and ${items[1].region}:`;
 
-          // Store both as compare slots
-          compareSlots = [
-            { ...results[0].calc, region: results[0].norm.region||items[0].region, grossLabel: `${cur0}${Math.round((results[0].norm.salary||0)/12).toLocaleString()}/mo gross` },
-            { ...results[1].calc, region: results[1].norm.region||items[1].region, grossLabel: `${cur1}${Math.round((results[1].norm.salary||0)/12).toLocaleString()}/mo gross` },
-          ];
-          renderCompare();
-          $('comparePanel').style.display = 'block';
+          // Show message with two result cards
+          const msgDiv = addMessage('ai', compMsg);
 
-          addMessage('ai', `Here's the comparison between ${items[0].region} and ${items[1].region}. Check the Calculator tab to see the full side-by-side breakdown!`);
+          // Build a side-by-side compare card and append to last message bubble
+          const bubble = msgDiv.querySelector('.msg-bubble');
+          if (bubble) {
+            const compareCard = document.createElement('div');
+            compareCard.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px';
+
+            [r0, r1].forEach((r, i) => {
+              const cur = COUNTRIES[items[i].country]?.currency || '';
+              const isWinner = i === winner;
+              const slot = document.createElement('div');
+              slot.style.cssText = 'background:var(--surface2);border:1px solid ' + (isWinner ? 'rgba(106,191,138,0.4)' : 'var(--border)') + ';border-radius:10px;padding:14px';
+              slot.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.12em;color:' + (isWinner ? 'var(--green)' : 'var(--text-dim)') + ';text-transform:uppercase;margin-bottom:10px">'
+                + (isWinner ? '🏆 ' : '') + r.region + '</div>'
+                + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+                + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">Net/mo</div><div style="font-family:DM Serif Display,serif;font-size:1rem;color:var(--green)">' + fmt(r.totalIncome || r.netMonthly, cur) + '</div></div>'
+                + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">Cost/mo</div><div style="font-family:DM Serif Display,serif;font-size:1rem;color:var(--amber)">' + fmt(r.colMonthly, cur) + '</div></div>'
+                + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">Tax rate</div><div style="font-family:DM Serif Display,serif;font-size:1rem;color:var(--red)">' + r.taxPct + '%</div></div>'
+                + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px"><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px">Surplus</div><div style="font-family:DM Serif Display,serif;font-size:1rem;color:' + (r.surplus >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (r.surplus >= 0 ? '+' : '−') + fmt(r.surplus, cur) + '</div></div>'
+                + '</div>';
+              compareCard.appendChild(slot);
+            });
+
+            bubble.appendChild(compareCard);
+
+            // Winner summary
+            const diff = Math.abs(r0.surplus - r1.surplus);
+            const winnerName = items[winner].region;
+            const cur = COUNTRIES[items[winner].country]?.currency || '';
+            const summaryDiv = document.createElement('div');
+            summaryDiv.style.cssText = 'margin-top:10px;font-size:13px;color:var(--text-mid);line-height:1.5';
+            summaryDiv.textContent = winnerName + ' wins by ' + fmt(diff, cur) + '/month in surplus.';
+            bubble.appendChild(summaryDiv);
+          }
+
+          window.lastCalcResult = r0;
+          window.lastParsed = items[0];
         } else {
           addMessage('ai', "I got the details but had trouble calculating one of the locations. Could you confirm the regions?");
         }
