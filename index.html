@@ -775,7 +775,8 @@ async function sendMessage() {
         ? `${normalized.salaryOriginalAmount.toLocaleString()} ${normalized.salaryOriginalCurrency} → ${normalized.salary.toLocaleString()} ${normalized.localCurrency} (rate: 1 ${normalized.salaryOriginalCurrency} = ${normalized.salaryRate.toFixed(2)} ${normalized.localCurrency})`
         : null;
       const cur = COUNTRIES[singleParsed.country]?.currency || '$';
-      const parsed = singleParsed;
+      // Use singleParsed directly — avoid redeclaring 'parsed' which is already in outer scope
+      const activeParsed = singleParsed;
       if (calcResult) {
         // Feed results BACK to GPT so it explains real numbers, not hallucinated ones
         const explainRes = await fetch('/api/chat', {
@@ -800,7 +801,7 @@ RULES:
               {
                 role: 'user',
                 content: JSON.stringify({
-                  userInputs: normalized,
+                  userInputs: activeParsed,
                   fxConversion: normalized._fxInfo || null,
                   calculatedResults: {
                     grossMonthly: Math.round(calcResult.totalGross / 12),
