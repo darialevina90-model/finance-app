@@ -839,7 +839,8 @@ RULES:
 
   } catch (err) {
     removeTyping();
-    addMessage('ai', "I'm having trouble connecting right now. Make sure the app is deployed on Vercel with the API key configured, or try again in a moment.");
+    console.error('sendMessage error:', err.message, err.stack);
+    addMessage('ai', "Something went wrong processing the response. Error: " + err.message);
   }
 
   isThinking = false;
